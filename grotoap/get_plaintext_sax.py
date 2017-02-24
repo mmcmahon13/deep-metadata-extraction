@@ -15,18 +15,31 @@ class ConstructLine(ContentHandler):
     def startElement(self, name, attrs):
         # Start new line and add old line to buffer
         if name == 'Line':
-            # self.full_text += self.lineText + '\n'
+            self.lineText += self.wordText
             if self.lineText != '':
                 self.output_file.write(self.lineText + '\n')
             self.lineText = ''
+            self.wordText = ''
 
         # Start new word and add old word to line
         elif name == 'Word':
-            self.lineText += self.wordText + ' '
+            if self.wordText != '':
+                self.lineText += self.wordText + ' '
             self.wordText = ''
 
         elif name == 'GT_Text':
             self.wordText += attrs.get('Value', "")
+
+    def endDocument(self):
+        # write the last word to the last line
+        if self.wordText != '':
+            self.lineText += self.wordText + ' '
+        self.wordText = ''
+
+        # write the last line to the doc
+        if self.lineText != '':
+            self.output_file.write(self.lineText + '\n')
+        self.lineText = ''
 
 def main():
     parser = make_parser()

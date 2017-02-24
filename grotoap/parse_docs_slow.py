@@ -6,34 +6,34 @@ import os
 
 # TODO: rewrite this with SAX
 
-# given a directory of docs in TrueViz format, get the plaintext files and write them to a new directory
-def create_plaintext_corpus(trueviz_dir_path, target_dir_path):
-    if not os.path.exists(target_dir_path):
-        os.makedirs(target_dir_path)
-
-    if not os.path.exists(trueviz_dir_path):
-        print("Incorrect path to TrueViz directory: %s" % trueviz_dir_path)
-        return
-    else:
-        for subdir, dirs, files in os.walk(trueviz_dir_path):
-            for tv_file in files:
-                if '.cxml' in tv_file:
-                    full_text = ''
-                    for event, elem in ET.iterparse(trueviz_dir_path + os.sep + tv_file):
-                        if elem.tag == "Word":
-                            cur_word = ''
-                            for char in elem.iter('Character'):
-                                cur_word += char[3].attrib['Value']
-                            full_text += cur_word + " "
-                        elem.clear()
-                    print(full_text)
-                    # doc = parse_doc(trueviz_dir_path + os.sep + tv_file)
-                    text_file_path = target_dir_path + os.path.sep + tv_file
-                    text_file = codecs.open(text_file_path, 'w', 'utf-8')
-                    print("Writing file %s" % text_file_path)
-                    # text_file.write(full_text)
-                    text_file.close()
-        print("Created directory of plaintext files")
+# # given a directory of docs in TrueViz format, get the plaintext files and write them to a new directory
+# def create_plaintext_corpus(trueviz_dir_path, target_dir_path):
+#     if not os.path.exists(target_dir_path):
+#         os.makedirs(target_dir_path)
+#
+#     if not os.path.exists(trueviz_dir_path):
+#         print("Incorrect path to TrueViz directory: %s" % trueviz_dir_path)
+#         return
+#     else:
+#         for subdir, dirs, files in os.walk(trueviz_dir_path):
+#             for tv_file in files:
+#                 if '.cxml' in tv_file:
+#                     full_text = ''
+#                     for event, elem in ET.iterparse(trueviz_dir_path + os.sep + tv_file):
+#                         if elem.tag == "Word":
+#                             cur_word = ''
+#                             for char in elem.iter('Character'):
+#                                 cur_word += char[3].attrib['Value']
+#                             full_text += cur_word + " "
+#                         elem.clear()
+#                     print(full_text)
+#                     # doc = parse_doc(trueviz_dir_path + os.sep + tv_file)
+#                     text_file_path = target_dir_path + os.path.sep + tv_file
+#                     text_file = codecs.open(text_file_path, 'w', 'utf-8')
+#                     print("Writing file %s" % text_file_path)
+#                     # text_file.write(full_text)
+#                     text_file.close()
+#         print("Created directory of plaintext files")
 
 def parse_doc(doc_path):
     tree = ET.parse(doc_path)
@@ -85,10 +85,10 @@ def parse_doc(doc_path):
     return doc
 
 def main():
-    # doc = parse_doc('grotoap2\\dataset\\00\\1276794.cxml')
-    # print(doc.getFullText())
-    # print(doc.toString())
-    create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
+    doc = parse_doc('grotoap2\\dataset\\00\\1276794.cxml')
+    print(doc.getFullText())
+    print(doc.toString())
+    # create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
 
 if __name__ == '__main__':
     main()
