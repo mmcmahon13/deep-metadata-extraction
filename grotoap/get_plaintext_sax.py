@@ -17,7 +17,8 @@ class ConstructLine(ContentHandler):
         if name == 'Line':
             self.lineText += self.wordText
             if self.lineText != '':
-                self.output_file.write(self.lineText + '\n')
+                # todo: changed this to just write one doc per line
+                self.output_file.write(self.lineText + " ") #+ '\n')
             self.lineText = ''
             self.wordText = ''
 
