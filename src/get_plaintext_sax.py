@@ -4,6 +4,8 @@ import os
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
 
+# Code to convert a directory of TrueViz docs to a directory (or single file) of plaintext docs
+
 # SAX content handler to assemble words and lines from the characters, print them to the specified file
 class ConstructLine(ContentHandler):
     def __init__(self, output_filename):
@@ -49,20 +51,20 @@ def main():
 
     arg_parser = argparse.ArgumentParser(description='Extract original plaintext from TrueViz documents')
     arg_parser.add_argument('trueviz_directory_path')
-    arg_parser.add_argument('target_directory_path')
+    arg_parser.add_argument('target_path')
     arg_parser.add_argument('-f', action='store_true', default=False,
                             help='write all the text to one file instead of separate files')
     args = arg_parser.parse_args()
 
     trueviz_dir_path = args.trueviz_directory_path
-    target_dir_path = args.target_directory_path
+    target_path = args.target_path
 
     # create a directory to hold the plaintext files
-    if not args.f and not os.path.exists(target_dir_path):
-        os.makedirs(target_dir_path)
+    if not args.f and not os.path.exists(target_path):
+        os.makedirs(target_path)
     # or if writing all the text to one file, clear it first
     else:
-        open('grotoap-full.txt', 'w').close()
+        open(target_path, 'w').close()
 
     if not os.path.exists(trueviz_dir_path):
         print("Incorrect path to TrueViz directory: %s" % trueviz_dir_path)
@@ -74,7 +76,7 @@ def main():
             for tv_file in files:
                 if '.cxml' in tv_file:
                     num_files += 1
-                    text_file_path = target_dir_path + os.sep + tv_file
+                    text_file_path = target_path + os.sep + tv_file
                     src_file_path = root + os.sep + tv_file
                     if not args.f:
                         print("Writing file %s" % text_file_path)
@@ -83,17 +85,16 @@ def main():
                             parser.setContentHandler(dh)
                             parser.parse(src_file_path)
                     else:
-                        with codecs.open('grotoap-full.txt', 'a', 'utf-8') as f:
+                        with codecs.open(target_path, 'a', 'utf-8') as f:
                             dh = ConstructLine(f)
                             parser.setContentHandler(dh)
                             parser.parse(src_file_path)
 
         if args.f:
             output_type = 'file'
-            path = 'grotoap-full.txt'
         else:
             output_type = 'directory'
-            path = target_dir_path
+        path = target_path
         print("Created %s containing %d parsed docs: %s" % (output_type, num_files, path))
 
 if __name__ == '__main__':

@@ -1,47 +1,63 @@
 import codecs
 import xml.etree.ElementTree as ET
 import xml.sax
+from xml.sax import ContentHandler
+
 from pdf_objects import *
 import os
 
-# TODO: rewrite this with SAX
+# SAX content handler to assemble words and lines from the characters, print them to the specified file
+class ConstructLine(ContentHandler):
 
-# # given a directory of docs in TrueViz format, get the plaintext files and write them to a new directory
-# def create_plaintext_corpus(trueviz_dir_path, target_dir_path):
-#     if not os.path.exists(target_dir_path):
-#         os.makedirs(target_dir_path)
-#
-#     if not os.path.exists(trueviz_dir_path):
-#         print("Incorrect path to TrueViz directory: %s" % trueviz_dir_path)
-#         return
-#     else:
-#         for subdir, dirs, files in os.walk(trueviz_dir_path):
-#             for tv_file in files:
-#                 if '.cxml' in tv_file:
-#                     full_text = ''
-#                     for event, elem in ET.iterparse(trueviz_dir_path + os.sep + tv_file):
-#                         if elem.tag == "Word":
-#                             cur_word = ''
-#                             for char in elem.iter('Character'):
-#                                 cur_word += char[3].attrib['Value']
-#                             full_text += cur_word + " "
-#                         elem.clear()
-#                     print(full_text)
-#                     # doc = parse_doc(trueviz_dir_path + os.sep + tv_file)
-#                     text_file_path = target_dir_path + os.path.sep + tv_file
-#                     text_file = codecs.open(text_file_path, 'w', 'utf-8')
-#                     print("Writing file %s" % text_file_path)
-#                     # text_file.write(full_text)
-#                     text_file.close()
-#         print("Created directory of plaintext files")
+    def __init__(self, doc):
+        # pass in empty document object
+        self.doc = doc
+        self.cur_page = None
+        self.cur_zone = None
+        self.cur_line = None
+        self.cur_word = None
+        self.num_pages = 0
+        self.num_zones = 0
+        self.num_lines = 0
+        self.num_words = 0
 
-def parse_doc(doc_path):
+    def startElement(self, name, attrs):
+        # If we see a new page element:
+        if name == 'Page':
+            self.num_pages += 1
+            # if we have an old page, add it to the doc
+            if not self.cur_page is None:
+                self.doc.pages.append(self.cur_page)
+            # create the new page object
+            self.cur_page = Page(self.num_pages)
+        # If we see a new line element:
+        elif name == 'Line':
+            self.num_lines += 1
+            if not self.cur_line is None:
+                self.zones.lines.append()
+
+        elif name == 'GT_Text':
+            self.wordText += attrs.get('Value', "")
+
+    def endDocument(self):
+        # write the last word to the last line
+        if self.wordText != '':
+            self.lineText += self.wordText + ' '
+        self.wordText = ''
+
+        # write the last line to the doc
+        if self.lineText != '':
+            self.output_file.write(self.lineText + '\n')
+        self.lineText = ''
+
+# TODO change this to use SAX parser
+def parse_doc(doc_path, doc_id):
     tree = ET.parse(doc_path)
     root = tree.getroot()
 
     # todo get doc id
 
-    doc = Document(1)
+    doc = Document(doc_id)
 
     for p, page in enumerate(root.iter('Page')):
         # create new page
@@ -85,7 +101,7 @@ def parse_doc(doc_path):
     return doc
 
 def main():
-    doc = parse_doc('grotoap2\\dataset\\00\\1276794.cxml')
+    doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
     print(doc.getFullText())
     print(doc.toString())
     # create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
