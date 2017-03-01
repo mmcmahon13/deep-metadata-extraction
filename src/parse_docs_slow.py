@@ -16,26 +16,54 @@ class ConstructLine(ContentHandler):
         self.cur_zone = None
         self.cur_line = None
         self.cur_word = None
+        self.wordText = ""
+        self.word_label = None
         self.num_pages = 0
         self.num_zones = 0
         self.num_lines = 0
         self.num_words = 0
+        self.bb_type = "" # keep track of whether the current vertices mark a zone, line, or word bounding box
 
     def startElement(self, name, attrs):
-        # If we see a new page element:
+        ## PAGE ELELMENT HANDLERS
         if name == 'Page':
             self.num_pages += 1
             # if we have an old page, add it to the doc
             if not self.cur_page is None:
-                self.doc.pages.append(self.cur_page)
+                self.doc.addPage(self.cur_page)
             # create the new page object
             self.cur_page = Page(self.num_pages)
-        # If we see a new line element:
+
+        ## ZONE ELEMENT HANDLERS
+        elif name == 'Zone':
+            self.num_zones += 1
+            if not self.cur_zone is None:
+                self.cur_page.addZone(self.cur_zone)
+            self.cur_zone = Zone(self.num_zones)
+        # if we see a bounding box element for the zone, take note
+        # so we know to assign the vertices to the current zone when we find them
+        elif name == 'ZoneCorners':
+            self.bb_type = "zone"
+        # if we see a classification label, apply it to the current zone and store it til we see a new one?
+        elif name == 'Classification':
+            self.word_label = attrs.get('Value', "")
+            self.cur_zone.setLabel(self.word_label)
+
+        ## LINE ELEMENT HANDLERS
         elif name == 'Line':
             self.num_lines += 1
             if not self.cur_line is None:
-                self.zones.lines.append()
+                self.cur_zone.addZone(self.cur_line, self.word_label)
+            self.cur_line = Line(self.num_lines)
 
+        ## WORD ELEMENT HANDLERS
+        elif name == 'Word':
+            self.num_words += 1
+            if not self.cur_word is None:
+                self.cur_word.setText(self.wordText)
+                self.wordText = ""
+                self.cur_zone.addWord(self.cur_word)
+            self.cur_word = Word(self.num_words, self.word_label)
         elif name == 'GT_Text':
             self.wordText += attrs.get('Value', "")
 

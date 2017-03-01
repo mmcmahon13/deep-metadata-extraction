@@ -60,12 +60,21 @@ class Zone:
     Zones have labels and bounding boxes
     """
 
-    def __init__(self, zone_id, label, top_left, bottom_right):
+    def __init__(self, zone_id):
         self.zone_id = zone_id
-        self.label = label
-        self.top_left = top_left
-        self.bottom_right = bottom_right
+        self.label = ""
+        self.top_left = (None, None)
+        self.bottom_right = (None, None)
         self.lines = []
+
+    def setLabel(self, label):
+        self.label = label
+
+    def setTopLeft(self, x, y):
+        self.top_left = (x, y)
+
+    def setBottomRight(self, x, y):
+        self.bottom_right = (x, y)
 
     def addLine(self, line):
         self.lines.add(line)
@@ -84,15 +93,24 @@ class Line:
     Representation of a line
     Lines have labels (in our case, the same as zones) and bounding boxes
     """
-    def __init__(self, line_id, label, top_left, bottom_right, text):
+    def __init__(self, line_id):
         self.line_id = line_id
-        self.label = label
-        self.top_left = top_left
-        self.bottom_right = bottom_right
+        self.label = ""
+        self.top_left = (None, None)
+        self.bottom_right = (None, None)
         self.words = []
 
     def addWord(self, word):
         self.words.append(word)
+
+    def setLabel(self, label):
+        self.label = label
+
+    def setTopLeft(self, x, y):
+        self.top_left = (x, y)
+
+    def setBottomRight(self, x, y):
+        self.bottom_right = (x, y)
 
     def getFullText(self):
         """ Return the full plaintext from the line """
@@ -111,4 +129,14 @@ class Word:
         self.label = label
         self.top_left = top_left
         self.bottom_right = bottom_right
-        self.text
+
+    def setLabel(self, label):
+        self.label = label
+
+
+    def setTopLeft(self, x, y):
+        self.top_left = (x, y)
+
+
+    def setBottomRight(self, x, y):
+        self.bottom_right = (x, y)
