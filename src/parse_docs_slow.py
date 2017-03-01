@@ -75,9 +75,11 @@ class ParsTrueViz(ContentHandler):
             # add the old line to the current zone
             if not self.cur_line is None:
                 # add the last word to the line
-                self.cur_word.setText(self.wordText)
-                self.wordText = ""
-                self.cur_line.addWord(self.cur_word)
+                if self.wordText != "":
+                    self.cur_word.setText(self.wordText)
+                    self.cur_line.addWord(self.cur_word)
+                    self.wordText = ""
+                    self.cur_word = None
                 # add the old line to the current zone
                 self.cur_zone.addLine(self.cur_line)
             # create new line and set its label to be that of the current zone
@@ -106,6 +108,9 @@ class ParsTrueViz(ContentHandler):
         # append character text to the current word
         elif name == 'GT_Text':
             self.wordText += attrs.get('Value', "")
+
+        elif name == 'CharacterCorners':
+            self.bb_type = 'char'
 
         ## BOUNDING BOX HANDLERS
         elif name == 'Vertex':
@@ -144,8 +149,12 @@ def parse_doc(doc_path, doc_id):
     parser.setFeature(feature_external_ges, False)
 
     # todo come up with docid
-    doc = Document(1)
+    doc = Document(doc_id)
     dh = ParsTrueViz(doc)
+
+    parser.setContentHandler(dh)
+    parser.parse(doc_path)
+    return doc
 
 def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')

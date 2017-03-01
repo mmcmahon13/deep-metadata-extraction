@@ -41,7 +41,7 @@ class Document:
             for zone in page.zones:
                 for line in zone.lines:
                     for word in line.words:
-                        print(word.text + '\t' + word.label)
+                        print(word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
 
 
 class Page:
