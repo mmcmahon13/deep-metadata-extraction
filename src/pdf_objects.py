@@ -9,16 +9,19 @@ class Document:
     def __init__(self, doc_id):
         self.doc_id = doc_id
         self.pages = []
+        self.text = ""
 
     def addPage(self, page):
         self.pages.append(page)
+        self.text += page.getFullText()
 
     def getFullText(self):
         """ Return the full plaintext from the document """
-        full_text = ''
-        for page in self.pages:
-            full_text += page.getFullText()
-        return full_text
+        # full_text = ''
+        # for page in self.pages:
+        #     full_text += page.getFullText()
+        # return full_text
+        return self.text
 
     def toString(self):
         """ Return a string to pretty-(ish) print the document structure """
@@ -42,16 +45,19 @@ class Page:
     def __init__(self, page_id):
         self.page_id = page_id
         self.zones = []
+        self.text = ""
 
     def addZone(self, zone):
         self.zones.append(zone)
+        self.text += zone.getFullText()
 
     def getFullText(self):
         """ Return the full plaintext from the page """
-        full_text = ''
-        for zone in self.zones:
-            full_text += zone.getFullText()
-        return full_text
+        # full_text = ''
+        # for zone in self.zones:
+        #     full_text += zone.getFullText()
+        # return full_text
+        return self.text
 
 
 class Zone:
@@ -66,6 +72,7 @@ class Zone:
         self.top_left = (None, None)
         self.bottom_right = (None, None)
         self.lines = []
+        self.text = ""
 
     def setLabel(self, label):
         self.label = label
@@ -78,14 +85,16 @@ class Zone:
 
     def addLine(self, line):
         self.lines.append(line)
+        self.text += line.getFullText() + "\n"
 
     def getFullText(self):
         """ Return the full plaintext from the zone """
-        full_text = ''
-        for line in self.lines:
-            full_text += line.getFullText()
-            full_text += '\n'
-        return full_text
+        # full_text = ''
+        # for line in self.lines:
+        #     full_text += line.getFullText()
+        #     full_text += '\n'
+        # return full_text
+        return self.text
 
 
 class Line:
@@ -99,9 +108,11 @@ class Line:
         self.top_left = (None, None)
         self.bottom_right = (None, None)
         self.words = []
+        self.text = ""
 
     def addWord(self, word):
         self.words.append(word)
+        self.text += word.text + " "
 
     def setLabel(self, label):
         self.label = label
@@ -114,10 +125,11 @@ class Line:
 
     def getFullText(self):
         """ Return the full plaintext from the line """
-        full_text = ''
-        for word in self.words:
-            full_text += word.text + " "
-        return full_text
+        # full_text = ''
+        # for word in self.words:
+        #     full_text += word.text + " "
+        # return full_text
+        return self.text
 
 class Word:
     """

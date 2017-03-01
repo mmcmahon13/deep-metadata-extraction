@@ -30,6 +30,17 @@ class ParsTrueViz(ContentHandler):
             self.num_pages += 1
             # if we have an old page, add it to the doc
             if not self.cur_page is None:
+                # finish the last word
+                self.cur_word.setText(self.wordText)
+                self.wordText = ""
+                # add it to the last line
+                self.cur_line.addWord(self.cur_word)
+                # finish the last line
+                self.cur_zone.addLine(self.cur_line)
+                self.cur_line = None
+                # finish the last zone
+                self.cur_page.addZone(self.cur_zone)
+                self.cur_zone = None
                 self.doc.addPage(self.cur_page)
             # create the new page object
             self.cur_page = Page(self.num_pages)
@@ -38,6 +49,14 @@ class ParsTrueViz(ContentHandler):
         elif name == 'Zone':
             self.num_zones += 1
             if not self.cur_zone is None:
+                # finish the last word
+                self.cur_word.setText(self.wordText)
+                self.wordText = ""
+                # add it to the last line
+                self.cur_line.addWord(self.cur_word)
+                # finish the last line
+                self.cur_zone.addLine(self.cur_line)
+                self.cur_line = None
                 self.cur_page.addZone(self.cur_zone)
             self.cur_zone = Zone(self.num_zones)
 
@@ -45,9 +64,9 @@ class ParsTrueViz(ContentHandler):
             # mark the bounding box as a zone box
             self.bb_type = "zone"
 
-        elif name == 'Classification' and not self.cur_zone is None:
+        elif name == 'Category' and not self.cur_zone is None:
             # if we see a classification label, apply it to the current zone and store it til we see a new one
-            self.word_label = attrs.get('Value', "")
+            self.word_label = attrs.get('Value')
             self.cur_zone.setLabel(self.word_label)
 
         ## LINE ELEMENT HANDLERS
@@ -55,6 +74,11 @@ class ParsTrueViz(ContentHandler):
             self.num_lines += 1
             # add the old line to the current zone
             if not self.cur_line is None:
+                # add the last word to the line
+                self.cur_word.setText(self.wordText)
+                self.wordText = ""
+                self.cur_line.addWord(self.cur_word)
+                # add the old line to the current zone
                 self.cur_zone.addLine(self.cur_line)
             # create new line and set its label to be that of the current zone
             self.cur_line = Line(self.num_lines)
@@ -108,8 +132,11 @@ class ParsTrueViz(ContentHandler):
 
 
     def endDocument(self):
-        # TODO
-        pass
+        self.cur_word.setText(self.wordText)
+        self.cur_line.addWord(self.cur_word)
+        self.cur_zone.addLine(self.cur_line)
+        self.cur_page.addZone(self.cur_zone)
+        self.doc.addPage(self.cur_page)
 
 # TODO change this to use SAX parser
 def parse_doc(doc_path, doc_id):
