@@ -36,6 +36,13 @@ class Document:
                     s += "\t\t%s\n" % line.getFullText()
         return s
 
+    def words(self):
+        for page in self.pages:
+            for zone in page.zones:
+                for line in zone.lines:
+                    for word in line.words:
+                        print(word.text + '\t' + word.label)
+
 
 class Page:
     """

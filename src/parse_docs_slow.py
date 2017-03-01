@@ -138,7 +138,6 @@ class ParsTrueViz(ContentHandler):
         self.cur_page.addZone(self.cur_zone)
         self.doc.addPage(self.cur_page)
 
-# TODO change this to use SAX parser
 def parse_doc(doc_path, doc_id):
     parser = make_parser()
     parser.setFeature(feature_namespaces, False)
@@ -148,63 +147,12 @@ def parse_doc(doc_path, doc_id):
     doc = Document(1)
     dh = ParsTrueViz(doc)
 
-    parser.setContentHandler(dh)
-    parser.parse(doc_path)
-
-    return doc
-
-    # tree = ET.parse(doc_path)
-    # root = tree.getroot()
-    #
-    # # todo get doc id
-    #
-    # doc = Document(doc_id)
-    #
-    # for p, page in enumerate(root.iter('Page')):
-    #     # create new page
-    #     cur_page = Page(p)
-    #     # create zones for page
-    #     for z,zone in enumerate(page.iter('Zone')):
-    #         # get the zone corners
-    #         for corner in zone.iter('ZoneCorners'):
-    #             for v, vertex in enumerate(corner):
-    #                 if v == 0:
-    #                     top_left = vertex.attrib
-    #                 else:
-    #                     bottom_right = vertex.attrib
-    #         # get the zone classification
-    #         for classification in zone.iter('Classification'):
-    #             label = classification[0].attrib['Value']
-    #         # create zone
-    #         cur_zone = Zone(z, label, top_left, bottom_right)
-    #         # go through the lines for the current zone
-    #         for l, line in enumerate(zone.iter('Line')):
-    #             # get the line corners
-    #             for corner in zone.iter('ZoneCorners'):
-    #                 for v, vertex in enumerate(corner):
-    #                     if v == 0:
-    #                         top_left = vertex.attrib
-    #                     else:
-    #                         bottom_right = vertex.attrib
-    #             # go through current line and get text
-    #             line_text = ""
-    #             for w, word in enumerate(line.iter('Word')):
-    #                 cur_word = ""
-    #                 for char in word.iter('Character'):
-    #                     cur_word += char[3].attrib['Value']
-    #                 line_text += cur_word
-    #                 line_text += " "
-    #             # create line
-    #             cur_line = Line(l, label, top_left, bottom_right, line_text.strip())
-    #             cur_zone.lines.append(cur_line)
-    #         cur_page.zones.append(cur_zone)
-    #     doc.pages.append(cur_page)
-    # return doc
-
 def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
-    print(doc.getFullText())
+    # print(doc.getFullText())
     print(doc.toString())
+    print()
+    doc.words()
     # create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
 
 if __name__ == '__main__':
