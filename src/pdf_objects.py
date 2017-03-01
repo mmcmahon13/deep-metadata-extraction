@@ -30,7 +30,7 @@ class Document:
                 s += "\tZone class: %s\n" % zone.label
                 for line in zone.lines:
                     s += "\t\tLine %d\n" % line.line_id
-                    s += "\t\t%s\n" % line.text
+                    s += "\t\t%s\n" % line.getFullText()
         return s
 
 
@@ -77,7 +77,7 @@ class Zone:
         self.bottom_right = (x, y)
 
     def addLine(self, line):
-        self.lines.add(line)
+        self.lines.append(line)
 
     def getFullText(self):
         """ Return the full plaintext from the zone """
@@ -117,6 +117,7 @@ class Line:
         full_text = ''
         for word in self.words:
             full_text += word.text + " "
+        return full_text
 
 class Word:
     """
@@ -124,11 +125,12 @@ class Word:
         Words have labels (in our case, the same as enclosing lines) and bounding boxes
     """
 
-    def __init__(self, word_id, label, top_left, bottom_right, text):
+    def __init__(self, word_id):
         self.word_id = word_id
-        self.label = label
-        self.top_left = top_left
-        self.bottom_right = bottom_right
+        self.text = ""
+        self.label = ""
+        self.top_left = (None, None)
+        self.bottom_right = (None, None)
 
     def setLabel(self, label):
         self.label = label
@@ -140,3 +142,6 @@ class Word:
 
     def setBottomRight(self, x, y):
         self.bottom_right = (x, y)
+
+    def setText(self, text):
+        self.text = text
