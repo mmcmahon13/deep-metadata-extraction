@@ -88,7 +88,7 @@ class ParsTrueViz(ContentHandler):
         ## BOUNDING BOX HANDLERS
         elif name == 'Vertex':
             # todo I think these are stored as strings, we probably want them as doubles
-            (x, y) = (attrs.get('x'), attrs.get('y'))
+            (x, y) = (float(attrs.get('x')), float(attrs.get('y')))
             if self.bb_type == 'zone' and self.num_vert == 0:
                 self.cur_zone.top_left = (x, y)
                 self.num_vert += 1

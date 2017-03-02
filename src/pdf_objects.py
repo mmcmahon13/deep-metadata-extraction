@@ -14,10 +14,24 @@ class BoundedDocumentObject(DocumentObject):
         self.bottom_right = (None, None)
     
     def height(self):
-        if not self.top_left == (None, None):
-            return self.top_left[0] - self.bottom_right[0]
+        if not self.top_left == (None, None) and not self.bottom_right == (None, None):
+            return abs(self.top_left[0] - self.bottom_right[0])
         else:
-            return -1
+            return None
+
+    def width(self):
+        if not self.top_left == (None, None) and not self.bottom_right == (None, None):
+            return abs(self.top_left[1] - self.bottom_right[1])
+        else:
+            return None
+
+    def centerpoint(self):
+        if not self.top_left == (None, None) and not self.bottom_right == (None, None):
+            x = float(abs(self.top_left[0] - self.bottom_right[0]))/2
+            y = float(abs(self.top_left[1] - self.bottom_right[1]))/2
+            return(x, y)
+        else:
+            return (None, None)
 
 
 class Document(DocumentObject):
@@ -108,7 +122,7 @@ class Line(DocumentObject, BoundedDocumentObject):
         self.words.append(word)
         self.text += word.text + " "
 
-
+# TODO: add pointers to containing objects
 class Word(DocumentObject, BoundedDocumentObject):
     """
         Representation of a word
