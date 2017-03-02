@@ -24,40 +24,16 @@ class ParsTrueViz(ContentHandler):
         self.bb_type = "" # keep track of whether the current vertices mark a zone, line, or word bounding box
         self.num_vert = 0 # keep track of whether this is the first or second vertex in a bounding box
 
+    # TODO move the bulk of this into end element, it should simplify things
     def startElement(self, name, attrs):
         ## PAGE ELELMENT HANDLERS
         if name == 'Page':
             self.num_pages += 1
-            # if we have an old page, add it to the doc
-            if not self.cur_page is None:
-                # finish the last word
-                self.cur_word.setText(self.wordText)
-                self.wordText = ""
-                # add it to the last line
-                self.cur_line.addWord(self.cur_word)
-                # finish the last line
-                self.cur_zone.addLine(self.cur_line)
-                self.cur_line = None
-                # finish the last zone
-                self.cur_page.addZone(self.cur_zone)
-                self.cur_zone = None
-                self.doc.addPage(self.cur_page)
-            # create the new page object
             self.cur_page = Page(self.num_pages)
 
         ## ZONE ELEMENT HANDLERS
         elif name == 'Zone':
             self.num_zones += 1
-            if not self.cur_zone is None:
-                # finish the last word
-                self.cur_word.setText(self.wordText)
-                self.wordText = ""
-                # add it to the last line
-                self.cur_line.addWord(self.cur_word)
-                # finish the last line
-                self.cur_zone.addLine(self.cur_line)
-                self.cur_line = None
-                self.cur_page.addZone(self.cur_zone)
             self.cur_zone = Zone(self.num_zones)
 
         elif name == 'ZoneCorners':
@@ -72,17 +48,6 @@ class ParsTrueViz(ContentHandler):
         ## LINE ELEMENT HANDLERS
         elif name == 'Line':
             self.num_lines += 1
-            # add the old line to the current zone
-            if not self.cur_line is None:
-                # add the last word to the line
-                if self.wordText != "":
-                    self.cur_word.setText(self.wordText)
-                    self.cur_line.addWord(self.cur_word)
-                    self.wordText = ""
-                    self.cur_word = None
-                # add the old line to the current zone
-                self.cur_zone.addLine(self.cur_line)
-            # create new line and set its label to be that of the current zone
             self.cur_line = Line(self.num_lines)
             self.cur_line.setLabel(self.word_label)
 
@@ -93,10 +58,6 @@ class ParsTrueViz(ContentHandler):
         ## WORD ELEMENT HANDLERS
         elif name == 'Word':
             self.num_words += 1
-            if not self.cur_word is None:
-                self.cur_word.setText(self.wordText)
-                self.wordText = ""
-                self.cur_line.addWord(self.cur_word)
             self.cur_word = Word(self.num_words)
             self.cur_word.setLabel(self.word_label)
 
@@ -135,13 +96,33 @@ class ParsTrueViz(ContentHandler):
                 self.cur_word.setBottomRight(x, y)
                 self.num_vert = 0
 
+    def endElement(self, name):
+        ## PAGE ELELMENT HANDLERS
+        if name == 'Page':
+            self.doc.addPage(self.cur_page)
 
-    def endDocument(self):
-        self.cur_word.setText(self.wordText)
-        self.cur_line.addWord(self.cur_word)
-        self.cur_zone.addLine(self.cur_line)
-        self.cur_page.addZone(self.cur_zone)
-        self.doc.addPage(self.cur_page)
+        ## ZONE ELEMENT HANDLERS
+        elif name == 'Zone':
+            self.cur_page.addZone(self.cur_zone)
+
+
+        ## LINE ELEMENT HANDLERS
+        elif name == 'Line':
+            self.cur_zone.addLine(self.cur_line)
+
+        ## WORD ELEMENT HANDLERS
+        elif name == 'Word':
+            self.cur_word.setText(self.wordText)
+            self.wordText = ""
+            self.cur_line.addWord(self.cur_word)
+
+
+    # def endDocument(self):
+    #     self.cur_word.setText(self.wordText)
+    #     self.cur_line.addWord(self.cur_word)
+    #     self.cur_zone.addLine(self.cur_line)
+    #     self.cur_page.addZone(self.cur_zone)
+    #     self.doc.addPage(self.cur_page)
 
 def parse_doc(doc_path, doc_id):
     parser = make_parser()
