@@ -29,18 +29,18 @@ class ParsTrueViz(ContentHandler):
         if name == 'Page':
             self.num_pages += 1
             # set the id to be the current number of pages, update it with given id later
-            self.cur_page = Page(self.num_pages)
+            self.cur_page = Page()
 
         elif name == 'PageID':
-            self.cur_page.setID(attrs.get('Value'))
+            self.cur_page.id = attrs.get('Value')
 
         ## ZONE ELEMENT HANDLERS
         elif name == 'Zone':
             self.num_zones += 1
-            self.cur_zone = Zone(self.num_zones)
+            self.cur_zone = Zone()
 
         elif name == 'ZoneID':
-            self.cur_zone.setID(attrs.get('Value'))
+            self.cur_zone.id = attrs.get('Value')
 
         elif name == 'ZoneCorners':
             # mark the bounding box as a zone box
@@ -49,16 +49,16 @@ class ParsTrueViz(ContentHandler):
         elif name == 'Category' and not self.cur_zone is None:
             # if we see a classification label, apply it to the current zone and store it til we see a new one
             self.word_label = attrs.get('Value')
-            self.cur_zone.setLabel(self.word_label)
+            self.cur_zone.label = self.word_label
 
         ## LINE ELEMENT HANDLERS
         elif name == 'Line':
             self.num_lines += 1
-            self.cur_line = Line(self.num_lines)
-            self.cur_line.setLabel(self.word_label)
+            self.cur_line = Line()
+            self.cur_line.label = self.word_label
 
         elif name == 'LineID':
-            self.cur_line.setID(attrs.get('Value'))
+            self.cur_line.id = attrs.get('Value')
 
         elif name == 'LineCorners':
             # mark the bounding box as a line box
@@ -67,11 +67,11 @@ class ParsTrueViz(ContentHandler):
         ## WORD ELEMENT HANDLERS
         elif name == 'Word':
             self.num_words += 1
-            self.cur_word = Word(self.num_words)
-            self.cur_word.setLabel(self.word_label)
+            self.cur_word = Word()
+            self.cur_word.label = self.word_label
 
         elif name == 'WordID':
-            self.cur_word.setID(attrs.get('Value'))
+            self.cur_word.id = attrs.get('Value')
 
         elif name == 'WordCorners':
             # mark the bounding box as a line box
@@ -90,22 +90,22 @@ class ParsTrueViz(ContentHandler):
             # todo I think these are stored as strings, we probably want them as doubles
             (x, y) = (attrs.get('x'), attrs.get('y'))
             if self.bb_type == 'zone' and self.num_vert == 0:
-                self.cur_zone.setTopLeft(x, y)
+                self.cur_zone.top_left = (x, y)
                 self.num_vert += 1
             elif self.bb_type == 'zone' and self.num_vert == 1:
-                self.cur_zone.setBottomRight(x, y)
+                self.cur_zone.bottom_right = (x, y)
                 self.num_vert = 0
             elif self.bb_type == 'line' and self.num_vert == 0:
-                self.cur_line.setTopLeft(x, y)
+                self.cur_line.top_left = (x, y)
                 self.num_vert += 1
             elif self.bb_type == 'line' and self.num_vert == 1:
-                self.cur_line.setBottomRight(x, y)
+                self.cur_line.bottom_right = (x, y)
                 self.num_vert = 0
             elif self.bb_type == 'word' and self.num_vert == 0:
-                self.cur_word.setTopLeft(x, y)
+                self.cur_word.top_left = (x, y)
                 self.num_vert += 1
             elif self.bb_type == 'word' and self.num_vert == 1:
-                self.cur_word.setBottomRight(x, y)
+                self.cur_word.bottom_right = (x, y)
                 self.num_vert = 0
 
     def endElement(self, name):
@@ -124,17 +124,10 @@ class ParsTrueViz(ContentHandler):
 
         ## WORD ELEMENT HANDLERS
         elif name == 'Word':
-            self.cur_word.setText(self.wordText)
+            self.cur_word.text = self.wordText
             self.wordText = ""
             self.cur_line.addWord(self.cur_word)
 
-
-    # def endDocument(self):
-    #     self.cur_word.setText(self.wordText)
-    #     self.cur_line.addWord(self.cur_word)
-    #     self.cur_zone.addLine(self.cur_line)
-    #     self.cur_page.addZone(self.cur_zone)
-    #     self.doc.addPage(self.cur_page)
 
 def parse_doc(doc_path, doc_id):
     parser = make_parser()
@@ -142,7 +135,7 @@ def parse_doc(doc_path, doc_id):
     parser.setFeature(feature_external_ges, False)
 
     # todo come up with docid
-    doc = Document(doc_id)
+    doc = Document()
     dh = ParsTrueViz(doc)
 
     parser.setContentHandler(dh)
@@ -153,13 +146,13 @@ def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
     # print(doc.getFullText())
     # print()
-    # print(doc.toString())
-    # print()
-    # doc.words()
-    # print()
+    print(doc.toString())
+    print("\nWORDS\n")
+    doc.words()
+    print("\nLINES\n")
     doc.lines()
-    # print()
-    # doc.zones()
+    print("\nZONES\n")
+    doc.zones()
 
 if __name__ == '__main__':
     main()
