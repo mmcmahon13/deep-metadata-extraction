@@ -24,17 +24,23 @@ class ParsTrueViz(ContentHandler):
         self.bb_type = "" # keep track of whether the current vertices mark a zone, line, or word bounding box
         self.num_vert = 0 # keep track of whether this is the first or second vertex in a bounding box
 
-    # TODO move the bulk of this into end element, it should simplify things
     def startElement(self, name, attrs):
         ## PAGE ELELMENT HANDLERS
         if name == 'Page':
             self.num_pages += 1
+            # set the id to be the current number of pages, update it with given id later
             self.cur_page = Page(self.num_pages)
+
+        elif name == 'PageID':
+            self.cur_page.setID(attrs.get('Value'))
 
         ## ZONE ELEMENT HANDLERS
         elif name == 'Zone':
             self.num_zones += 1
             self.cur_zone = Zone(self.num_zones)
+
+        elif name == 'ZoneID':
+            self.cur_zone.setID(attrs.get('Value'))
 
         elif name == 'ZoneCorners':
             # mark the bounding box as a zone box
@@ -51,6 +57,9 @@ class ParsTrueViz(ContentHandler):
             self.cur_line = Line(self.num_lines)
             self.cur_line.setLabel(self.word_label)
 
+        elif name == 'LineID':
+            self.cur_line.setID(attrs.get('Value'))
+
         elif name == 'LineCorners':
             # mark the bounding box as a line box
             self.bb_type = "line"
@@ -60,6 +69,9 @@ class ParsTrueViz(ContentHandler):
             self.num_words += 1
             self.cur_word = Word(self.num_words)
             self.cur_word.setLabel(self.word_label)
+
+        elif name == 'WordID':
+            self.cur_word.setID(attrs.get('Value'))
 
         elif name == 'WordCorners':
             # mark the bounding box as a line box
@@ -140,10 +152,14 @@ def parse_doc(doc_path, doc_id):
 def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
     # print(doc.getFullText())
-    print(doc.toString())
+    # print()
+    # print(doc.toString())
     # print()
     # doc.words()
-    # create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
+    # print()
+    doc.lines()
+    # print()
+    # doc.zones()
 
 if __name__ == '__main__':
     main()

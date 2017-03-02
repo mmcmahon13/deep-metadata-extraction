@@ -15,6 +15,9 @@ class Document:
         self.pages.append(page)
         self.text += page.getFullText()
 
+    def setID(self, id):
+        self.doc_id = id
+
     def getFullText(self):
         """ Return the full plaintext from the document """
         # full_text = ''
@@ -41,7 +44,18 @@ class Document:
             for zone in page.zones:
                 for line in zone.lines:
                     for word in line.words:
-                        print(word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
+                        print(word.word_id + '\t' + word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
+
+    def lines(self):
+        for page in self.pages:
+            for zone in page.zones:
+                for line in zone.lines:
+                    print(line.line_id + '\t'+ line.getFullText() + '\t' + line.label + '\t' + str(line.top_left) + '\t' + str(line.bottom_right))
+
+    def zones(self):
+        for page in self.pages:
+            for zone in page.zones:
+                print(zone.zone_id + '\t'+ zone.getFullText() + '\t' + zone.label + '\t' + str(zone.top_left) + '\t' + str(zone.bottom_right))
 
 
 class Page:
@@ -53,6 +67,9 @@ class Page:
         self.page_id = page_id
         self.zones = []
         self.text = ""
+
+    def setID(self, id):
+        self.page_id = id
 
     def addZone(self, zone):
         self.zones.append(zone)
@@ -80,6 +97,9 @@ class Zone:
         self.bottom_right = (None, None)
         self.lines = []
         self.text = ""
+
+    def setID(self, id):
+        self.zone_id = id
 
     def setLabel(self, label):
         self.label = label
@@ -117,6 +137,9 @@ class Line:
         self.words = []
         self.text = ""
 
+    def setID(self, id):
+        self.line_id = id
+
     def addWord(self, word):
         self.words.append(word)
         self.text += word.text + " "
@@ -150,6 +173,9 @@ class Word:
         self.label = ""
         self.top_left = (None, None)
         self.bottom_right = (None, None)
+
+    def setID(self, id):
+        self.word_id = id
 
     def setLabel(self, label):
         self.label = label
