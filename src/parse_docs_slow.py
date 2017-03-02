@@ -141,8 +141,8 @@ def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
     # print(doc.getFullText())
     print(doc.toString())
-    print()
-    doc.words()
+    # print()
+    # doc.words()
     # create_plaintext_corpus('grotoap2\\dataset\\00', 'grotoap2_text')
 
 if __name__ == '__main__':
