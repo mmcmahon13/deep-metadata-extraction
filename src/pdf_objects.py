@@ -122,12 +122,22 @@ class Line(DocumentObject, BoundedDocumentObject):
         self.words.append(word)
         self.text += word.text + " "
 
-# TODO: add pointers to containing objects
+# TODO: add pointers to containing objects so we can use them for feature engineering as well
 class Word(DocumentObject, BoundedDocumentObject):
     """
         Representation of a word
         Words have labels (in our case, the same as enclosing lines) and bounding boxes
     """
+
+    def shape(self):
+        if all(c.isupper() for c in self.text):
+            return "AA"
+        if self.text[0].isupper():
+            return "Aa"
+        if any(c for c in self.text if c.isupper()):
+            return "aAa"
+        else:
+            return "a"
 
     def __init__(self):
         pass

@@ -1,11 +1,10 @@
 import codecs
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
-
 from pdf_objects import *
-import os
 
 # SAX content handler to assemble words and lines from the characters, print them to the specified file
+# TODO: should this do any other preprocessing for the words? like isolating numbers, punctuation, etc?
 class ParsTrueViz(ContentHandler):
 
     def __init__(self, doc):
