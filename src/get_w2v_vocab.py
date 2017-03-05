@@ -43,7 +43,9 @@ def main():
     args = arg_parser.parse_args()
 
     vocab_intmap = create_vocab(args.embeddings_file_path)
+    print("pickling vocab map")
     pickle.dumps(vocab_intmap, open(args.target_path, 'wb'))
+    print("done pickling. checking coverage...")
     check_coverage(vocab_intmap, args.dir)
 
 
