@@ -62,22 +62,31 @@ class Document(DocumentObject):
         return s
 
     def words(self):
+        words = []
         for page in self.pages:
             for zone in page.zones:
                 for line in zone.lines:
                     for word in line.words:
-                        print(word.id + '\t' + word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
+                        # print(word.id + '\t' + word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
+                        words.append(word)
+        return words
 
     def lines(self):
+        lines = []
         for page in self.pages:
             for zone in page.zones:
                 for line in zone.lines:
-                    print(line.id + '\t'+ line.text + '\t' + line.label + '\t' + str(line.top_left) + '\t' + str(line.bottom_right))
+                    # print(line.id + '\t'+ line.text + '\t' + line.label + '\t' + str(line.top_left) + '\t' + str(line.bottom_right))
+                    lines.append(line)
+        return line
 
     def zones(self):
+        zones = []
         for page in self.pages:
             for zone in page.zones:
-                print(zone.id + '\t'+ zone.text + '\t' + zone.label + '\t' + str(zone.top_left) + '\t' + str(zone.bottom_right))
+                # print(zone.id + '\t'+ zone.text + '\t' + zone.label + '\t' + str(zone.top_left) + '\t' + str(zone.bottom_right))
+                zones.append(zone)
+        return zones
 
 
 class Page(DocumentObject):
