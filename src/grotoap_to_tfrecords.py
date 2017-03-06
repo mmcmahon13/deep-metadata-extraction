@@ -77,7 +77,7 @@ def _int64_feature(value): return tf.train.Feature(int64_list=tf.train.Int64List
     #         shape_str += shape_c
     # return shape_str
 
-# TODO: should this take a doc instead? and treat it as a sequence of lines?
+# TODO: should this take a page per example?
 def make_example(writer, lines, label_map, token_map, shape_map, char_map, update_vocab, update_chars):
     # data format is:
     # token pos phrase ner
@@ -176,6 +176,7 @@ def make_example(writer, lines, label_map, token_map, shape_map, char_map, updat
                 current_sent_len += 1
 
                 # process tokens to match Collobert embedding preprocessing:
+                # TODO: process to match BIONLP embeddings (extra tokenization and ascii replacement: do this here?)
                 # - normalize the digits to 0
                 # - lowercase
                 token_str_digits = re.sub("\d", "0", token_str)
