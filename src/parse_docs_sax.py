@@ -128,7 +128,7 @@ class ParsTrueViz(ContentHandler):
             self.cur_line.addWord(self.cur_word)
 
 
-def parse_doc(doc_path, doc_id):
+def parse_doc(doc_path):
     parser = make_parser()
     parser.setFeature(feature_namespaces, False)
     parser.setFeature(feature_external_ges, False)
@@ -142,7 +142,7 @@ def parse_doc(doc_path, doc_id):
     return doc
 
 def main():
-    doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml', '1276794')
+    doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml')
     # print(doc.getFullText())
     # print()
     print(doc.toString())
