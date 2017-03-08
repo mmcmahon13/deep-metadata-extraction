@@ -1,5 +1,7 @@
 import argparse
+import locale
 import os
+import sys
 
 import pickle
 
@@ -28,10 +30,18 @@ def check_coverage(trueviz_dir_path, vocab_intmap):
         for tv_file in files:
             if '.cxml' in tv_file:
                 src_file_path = root + os.sep + tv_file
-                doc = parse_doc(src_file_path, "1")
+                doc = parse_doc(src_file_path)
                 for word in doc.words():
                     if word.text in vocab_intmap:
                         num_in_vocab += 1
+                    else:
+                        # sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
+                        try:
+                            print(word.text)
+                        except UnicodeEncodeError:
+                            print('not real unicode?')
+                        except UnicodeDecodeError:
+                            print("ascii can't decode this or something")
                     num_words += 1
     print("Embeddings coverage: ", float(num_in_vocab)/num_words)
 
