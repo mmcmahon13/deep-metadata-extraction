@@ -128,13 +128,6 @@ def make_example(writer, page, update_vocab, update_chars):
         the TFRecord writer
     :param page:
         a document page to make an example from
-    :param label_map:
-        dict mapping integers to labels
-    :param token_map:
-        dict mapping integers to tokens
-    :param shape_map:
-        dict mapping integers to shapes
-    :param char_map:
         dict mapping integers to characters
     :param update_vocab:
         whether or not to update the vocabulary with new words we find
