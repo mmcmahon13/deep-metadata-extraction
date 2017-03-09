@@ -156,13 +156,13 @@ def main():
     print("\nZONES\n")
     zones = doc.zones()
 
-    print(words[0].text)
-    print("top left vertex: ",words[0].top_left)
-    print("bottom right vertex: ",words[0].bottom_right)
-    print("shape: ",words[0].shape())
-    print("width: ", words[0].width())
-    print("height: ",words[0].height())
-    print("center: ",words[0].centerpoint())
+    print("word text: ", words[1].text)
+    print("top left vertex: ",words[1].top_left)
+    print("bottom right vertex: ",words[1].bottom_right)
+    print("shape: ",words[1].shape())
+    print("width: ", words[1].width())
+    print("height: ",words[1].height())
+    print("center: ",words[1].centerpoint())
 
 if __name__ == '__main__':
     main()

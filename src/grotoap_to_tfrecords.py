@@ -46,6 +46,12 @@ queue = multiprocessing.Queue()
 queue.put(0)
 lock = multiprocessing.Lock()
 
+
+# TODO since this will be multithreaded, protect these with locks?
+label_map = {}
+token_map = {}
+shape_map = {}
+char_map = {}
 # just inverses of the maps for printing and junk
 label_int_str_map = {}
 token_int_str_map = {}
@@ -90,7 +96,7 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     writer.write(example.SerializeToString())
 
 
-def make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars):
+def make_example(writer, page, update_vocab, update_chars):
     '''
     given a page from a document, make an example out of it (e.g. serialize it into a sequence of labeled word features)
     :param writer:
@@ -127,7 +133,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
 
     # ignore padding for now and just let the batcher handle variable length sequences?
     max_len_with_pad = len(word_tups)
-    max_word_len = max(map(len, [word.text for (word,_,_,_) in word_tups]))
+    sum_word_len = sum(map(len, [word.text for (word,_,_,_) in word_tups]))
 
     ## for each sequence, keep track of the following word features:
     # vector of token ids
@@ -135,7 +141,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
     # vector of shape ids
     shapes = np.zeros(max_len_with_pad, dtype=np.int64)
     # vector of character ids
-    chars = np.zeros(max_len_with_pad * max_word_len, dtype=np.int64)
+    chars = np.zeros(sum_word_len, dtype=np.int64)
     # vector of label ids
     intmapped_labels = np.zeros(max_len_with_pad, dtype=np.int64)
     # TODO: add something for location (like a bin of regions or someting)
@@ -154,6 +160,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
     last_label = "O"
     labels = []
     current_tag = ''
+    char_start = 0
 
     # iterate over the words in the sequence and extract features, update vocab maps
     for i, (word, page_id, zone_id, line_id) in enumerate(word_tups):
@@ -201,14 +208,16 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
                 char_map[char] = len(char_map)
                 char_int_str_map[char_map[char]] = char
 
-        # keep track of the length
+        # keep track of the lengths of the tokens
         tok_lens.append(len(token))
 
         # update the feature vectors:
         tokens[i] = token_map.get(token_normalized, token_map[OOV_STR])
         shapes[i] = shape_map[token_shape]
         # TODO: this isn't indexed right
-        # chars[i:i+tok_lens[-1]] = [char_map.get(char, char_map[OOV_STR]) for char in token_normalized]
+        chars[char_start:char_start+tok_lens[-1]] = [char_map.get(char, char_map[OOV_STR]) for char in token_normalized]
+        # print(chars)
+        char_start += tok_lens[-1]
         # transform to intmapped labels later?
         labels.append(label_bilou)
         last_label = label_bilou
@@ -225,7 +234,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
         # print("labels", map(lambda t: label_int_str_map[t], intmapped_labels))
         print("labels ", labels)
         print("tokens ", map(lambda t: token_int_str_map[t], tokens))
-        # print("chars", map(lambda t: char_int_str_map[t], chars))
+        print("chars", map(lambda t: char_int_str_map[t], chars))
 
         print("shapes ", map(lambda t: shape_int_str_map[t], shapes))
         print("widths ", widths)
@@ -254,10 +263,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
 
 
 def doc_to_examples(total_docs, in_out):
-    label_map = {}
-    token_map = {}
-    shape_map = {}
-    char_map = {}
+    # convert all pages in a doc to examples
 
     update_vocab = True
     update_chars = True
@@ -278,6 +284,7 @@ def doc_to_examples(total_docs, in_out):
     # add out of vocab string to the token, character maps
     token_map[OOV_STR] = len(token_map)
     token_int_str_map[token_map[OOV_STR]] = OOV_STR
+
     char_map[OOV_STR] = len(char_map)
     char_int_str_map[char_map[OOV_STR]] = OOV_STR
 
@@ -303,7 +310,7 @@ def doc_to_examples(total_docs, in_out):
         # for page in doc.pages:
         #     make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars)
         # just start by trying first page only
-        make_example(writer, doc.pages[0], label_map, token_map, shape_map, char_map, update_vocab, update_chars)
+        make_example(writer, doc.pages[0], update_vocab, update_chars)
         writer.close()
         print('\nDone processing %s.' % in_f)
     except KeyboardInterrupt:
