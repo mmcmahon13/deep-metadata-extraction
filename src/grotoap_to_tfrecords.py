@@ -187,7 +187,7 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
         bottom_right = word.bottom_right
         height = word.height()
         width = word.width()
-        wh_ratio = height/width
+        wh_ratio = width/height
 
         # get shape and add to shape map
         token_shape = word.shape()
@@ -223,11 +223,14 @@ def make_example(writer, page, label_map, token_map, shape_map, char_map, update
     if FLAGS.debug:
         # print("sent lens: ", sent_lens)
         # print("labels", map(lambda t: label_int_str_map[t], intmapped_labels))
-        print("labels", labels)
-        print("tokens", map(lambda t: token_int_str_map[t], tokens))
+        print("labels ", labels)
+        print("tokens ", map(lambda t: token_int_str_map[t], tokens))
         # print("chars", map(lambda t: char_int_str_map[t], chars))
 
-        print("shapes", map(lambda t: shape_int_str_map[t], shapes))
+        print("shapes ", map(lambda t: shape_int_str_map[t], shapes))
+        print("widths ", widths)
+        print("heights ", heights)
+        print("w/h ratios ", wh_ratios)
 
         # for j in range(len(word_tups)):
         #     print(token_int_str_map[tokens[j]], tokens, labels[j], shape_map[shapes[j]])

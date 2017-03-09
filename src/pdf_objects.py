@@ -15,20 +15,20 @@ class BoundedDocumentObject(DocumentObject):
     
     def height(self):
         if not self.top_left == (None, None) and not self.bottom_right == (None, None):
-            return abs(self.top_left[0] - self.bottom_right[0])
+            return abs(self.top_left[1] - self.bottom_right[1])
         else:
             return None
 
     def width(self):
         if not self.top_left == (None, None) and not self.bottom_right == (None, None):
-            return abs(self.top_left[1] - self.bottom_right[1])
+            return abs(self.top_left[0] - self.bottom_right[0])
         else:
             return None
 
     def centerpoint(self):
         if not self.top_left == (None, None) and not self.bottom_right == (None, None):
-            x = float(abs(self.top_left[0] - self.bottom_right[0]))/2
-            y = float(abs(self.top_left[1] - self.bottom_right[1]))/2
+            x = float(abs(self.top_left[0] + self.bottom_right[0]))/2
+            y = float(abs(self.top_left[1] + self.bottom_right[1]))/2
             return(x, y)
         else:
             return (None, None)

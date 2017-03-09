@@ -1,3 +1,6 @@
+from __future__ import division
+from __future__ import print_function
+
 import codecs
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
@@ -147,11 +150,19 @@ def main():
     # print()
     print(doc.toString())
     print("\nWORDS\n")
-    doc.words()
+    words = doc.words()
     print("\nLINES\n")
-    doc.lines()
+    lines = doc.lines()
     print("\nZONES\n")
-    doc.zones()
+    zones = doc.zones()
+
+    print(words[0].text)
+    print("top left vertex: ",words[0].top_left)
+    print("bottom right vertex: ",words[0].bottom_right)
+    print("shape: ",words[0].shape())
+    print("width: ", words[0].width())
+    print("height: ",words[0].height())
+    print("center: ",words[0].centerpoint())
 
 if __name__ == '__main__':
     main()
