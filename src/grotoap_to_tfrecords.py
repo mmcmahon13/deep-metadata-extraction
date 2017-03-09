@@ -65,7 +65,6 @@ def generate_bio(label, last_label):
 
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
                       widths, heights, wh_ratios, pages, lines, zones):
-    # TODO update this to write all features to example
     example = tf.train.SequenceExample()
 
     fl_labels = example.feature_lists.feature_list["labels"]
@@ -232,13 +231,13 @@ def make_example(writer, page, update_vocab, update_chars):
         # update the feature vectors:
         tokens[i] = token_map.get(token_normalized, token_map[OOV_STR])
         shapes[i] = shape_map[token_shape]
-        # TODO: this isn't indexed right
+        # update char features
         chars[char_start:char_start+tok_lens[-1]] = [char_map.get(char, char_map[OOV_STR]) for char in token_normalized]
         # print(chars)
         char_start += tok_lens[-1]
-        # transform to intmapped labels later?
         labels.append(label_bilou)
         last_label = label_bilou
+        # update geometric features
         widths[i] = width
         heights[i] = height
         wh_ratios[i] = wh_ratio
@@ -246,11 +245,17 @@ def make_example(writer, page, update_vocab, update_chars):
         lines[i] = line_id
         zones[i] = zone_id
 
-    # TODO: intmap the labels
+    # TODO: why are we intmapping the labels here? is it because of earlier BIO processing?
+
+    for label in labels:
+        if label not in label_map:
+            label_map[label] = len(label_map)
+            label_int_str_map[label_map[label]] = label
+
+    intmapped_labels[:] = map(lambda s: label_map[s], labels)
+
     if FLAGS.debug:
-        # print("sent lens: ", sent_lens)
-        # print("labels", map(lambda t: label_int_str_map[t], intmapped_labels))
-        print("labels ", labels)
+        print("labels ", map(lambda t: label_int_str_map[t], intmapped_labels))
         print("tokens ", map(lambda t: token_int_str_map[t], tokens))
         print("chars", map(lambda t: char_int_str_map[t], chars))
 
