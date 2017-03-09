@@ -39,7 +39,9 @@ OOV_STR = "<OOV>"
 # def feature_lists(d): return tf.train.FeatureLists(feature_list=d)
 
 # Emma's helpers
-def _int64_feature(value): return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+# def _int64_feature(value): return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+# def _float64_feature(value): return tf.train.Feature(float64_list=tf.train.Float64List(value=value))
+
 
 # TODO: do we need these? i think pat only used them to keep track of the processing progress
 queue = multiprocessing.Queue()
@@ -90,8 +92,31 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     for tok_len in tok_lens:
         fl_tok_len.feature.add().int64_list.value.append(tok_len)
 
+    # geometric feats
+    fl_width = example.feature_lists.feature_list["widths"]
+    for width in widths:
+        fl_width.feature.add().float_list.value.append(width)
 
-    #TODO: write the other feature lists as well
+    fl_height = example.feature_lists.feature_list["heights"]
+    for height in heights:
+        fl_height.feature.add().float_list.value.append(height)
+
+    fl_wh_ratio = example.feature_lists.feature_list["wh_ratios"]
+    for wh_ratio in wh_ratios:
+        fl_wh_ratio.feature.add().float_list.value.append(wh_ratio)
+
+    # page, zone, line feats
+    fl_page_id = example.feature_lists.feature_list["page_ids"]
+    for page_id in pages:
+        fl_page_id.feature.add().int64_list.value.append(page_id)
+
+    fl_line_id = example.feature_lists.feature_list["line_ids"]
+    for line_id in lines:
+        fl_line_id.feature.add().int64_list.value.append(line_id)
+
+    fl_zone_id = example.feature_lists.feature_list["zone_ids"]
+    for zone_id in zones:
+        fl_zone_id.feature.add().int64_list.value.append(zone_id)
 
     writer.write(example.SerializeToString())
 
@@ -241,8 +266,9 @@ def make_example(writer, page, update_vocab, update_chars):
         print("heights ", heights)
         print("w/h ratios ", wh_ratios)
 
-        # for j in range(len(word_tups)):
-        #     print(token_int_str_map[tokens[j]], tokens, labels[j], shape_map[shapes[j]])
+        print("pages ", pages)
+        print("lines ", lines)
+        print("zones ", zones)
 
     print("serializing page ", page_id)
     serialize_example(writer,
