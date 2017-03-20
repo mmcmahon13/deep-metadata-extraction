@@ -13,10 +13,12 @@ import numpy as np
 
 from pdf_objects import *
 from parse_docs_sax import *
+from batch_utils import *
 
 # tf.app.flags.DEFINE_string('trueviz_in_files', '', 'pattern to match trueviz document files')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
 tf.app.flags.DEFINE_string('load_vocab', '', 'directory containing embedding vocab files to load')
+tf.app.flags.DEFINE_boolean('use_lexicons', False, 'use string lexicon features')
 # tf.app.flags.DEFINE_integer('num_threads', 12, 'max number of threads to use for parallel processing')
 # tf.app.flags.DEFINE_boolean('padding', 0, '0: no padding, 1: 0 pad to the right of seq, 2: 0 pad to the left')
 # tf.app.flags.DEFINE_boolean('normalize_digits', False, 'map all digits to 0')
@@ -61,6 +63,9 @@ char_int_str_map = {}
 shape_int_str_map = {}
 
 def generate_bio(label, last_label):
+    pass
+
+def match_lexicons(token):
     pass
 
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
@@ -161,7 +166,7 @@ def make_example(writer, page, update_vocab, update_chars):
     chars = np.zeros(sum_word_len, dtype=np.int64)
     # vector of label ids
     intmapped_labels = np.zeros(max_len_with_pad, dtype=np.int64)
-    # TODO: add something for location (like a bin of regions or someting)
+    # TODO: add something for location (like a bin of regions or something)
     # geometrical information:
     widths = np.zeros(max_len_with_pad, dtype=np.float64)
     heights = np.zeros(max_len_with_pad, dtype=np.float64)
@@ -372,7 +377,24 @@ def main(argv):
         sys.exit(1)
     test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1276794.cxml'
     doc_to_examples(1, (test_doc_path, FLAGS.out_dir))
-
+    filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
+                                                    num_epochs=None)
+    labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, page_ids, line_ids, zone_ids = parse_one_example(filename_queue)
+    # if FLAGS.debug:
+    #     print("labels ", map(lambda t: label_int_str_map[t], labels))
+    #     print("tokens ", map(lambda t: token_int_str_map[t], tokens))
+    #     print("chars", map(lambda t: char_int_str_map[t], chars))
+    #
+    #     print("shapes ", map(lambda t: shape_int_str_map[t], shapes))
+    #     print("widths ", widths)
+    #     print("heights ", heights)
+    #     print("w/h ratios ", wh_ratios)
+    #
+    #     print("pages ", page_ids)
+    #     print("lines ", line_ids)
+    #     print("zones ", zone_ids)
 
 if __name__ == '__main__':
     tf.app.run()
+
+# python grotoap_to_tfrecords.py --out_dir $DATA_DIR --load_vocab /iesl/canvas/mmcmahon/embeddings/PubMed-w2v.txt

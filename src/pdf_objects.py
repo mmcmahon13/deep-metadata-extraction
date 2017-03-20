@@ -33,6 +33,8 @@ class BoundedDocumentObject(DocumentObject):
         else:
             return (None, None)
 
+    def region(self):
+        pass
 
 class Document(DocumentObject):
     """
