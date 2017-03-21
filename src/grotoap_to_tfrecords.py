@@ -374,6 +374,14 @@ def doc_to_examples(total_docs, in_out):
     except KeyboardInterrupt:
         return 'KeyboardException'
 
+def dir_to_examples(dir_path, out_path):
+    for subdir, dirs, files in os.walk(dir_path):
+        for file in files:
+            if '.cxml' in file:
+                # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
+                filepath = subdir + os.sep + file
+
+
 def grotoap_to_examples():
     if not os.path.exists(FLAGS.out_dir):
         os.makedirs(FLAGS.out_dir)
@@ -426,9 +434,15 @@ def grotoap_to_examples():
 
 def export_maps():
     # export the string->int maps to file
+    print(len(label_map))
+    print(len(token_map))
+    print(len(char_map))
+    print(len(shape_map))
+
     print('exporting string->int maps')
     for f_str, id_map in [('label', label_map), ('token', token_map), ('shape', shape_map), ('char', char_map)]:
-        with open(FLAGS.out_dir + '/' + f_str + '.txt', 'w') as f:
+        with codecs.open(FLAGS.out_dir + '/' + f_str + '.txt', 'w', 'utf-8') as f:
+        # with open(FLAGS.out_dir + '/' + f_str + '.txt', 'w') as f:
             [f.write(s + '\t' + str(i) + '\n') for (s, i) in id_map.items()]
 
 def main(argv):
@@ -436,9 +450,9 @@ def main(argv):
     if FLAGS.out_dir == '':
         print('Must supply out_dir')
         sys.exit(1)
-    # test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
-    # doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
-    grotoap_to_examples()
+    test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
+    doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
+    # grotoap_to_examples()
     export_maps()
     # filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
     #                                                 num_epochs=None)
