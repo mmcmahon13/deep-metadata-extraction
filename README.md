@@ -18,5 +18,5 @@ Represents parsed documents as a heirarchical structure; the highest container i
 ```
 Zone labels are parsed out of the TrueViz XML and applied to all lines and words within a zone; so zones, lines, and words all have labels. Zones, lines, and words also have bounding box information, in the form of a top-left corner vertex and bottom-right corner vertex.
 
-### parse_docs_sax
-*In progress*
+### parse_docs_sax.py
+To parse a single doc into a Document representation, call the parse_doc(filename) function from parse_docs_sax.py, passing it the path of the file to be parsed. The function returns a Document object from which features may be extracted.
