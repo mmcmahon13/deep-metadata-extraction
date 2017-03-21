@@ -7,6 +7,8 @@ import multiprocessing
 import sys
 import re
 import os
+from functools import partial
+
 import tensorflow as tf
 import numpy as np
 # import partial
@@ -15,11 +17,11 @@ from pdf_objects import *
 from parse_docs_sax import *
 from batch_utils import *
 
-# tf.app.flags.DEFINE_string('trueviz_in_files', '', 'pattern to match trueviz document files')
+tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
 tf.app.flags.DEFINE_string('load_vocab', '', 'directory containing embedding vocab files to load')
 tf.app.flags.DEFINE_boolean('use_lexicons', False, 'use string lexicon features')
-# tf.app.flags.DEFINE_integer('num_threads', 12, 'max number of threads to use for parallel processing')
+tf.app.flags.DEFINE_integer('num_threads', 12, 'max number of threads to use for parallel processing')
 # tf.app.flags.DEFINE_boolean('padding', 0, '0: no padding, 1: 0 pad to the right of seq, 2: 0 pad to the left')
 # tf.app.flags.DEFINE_boolean('normalize_digits', False, 'map all digits to 0')
 # tf.app.flags.DEFINE_boolean('lowercase', False, 'whether to lowercase')
@@ -69,7 +71,7 @@ def match_lexicons(token):
     pass
 
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
-                      widths, heights, wh_ratios, pages, lines, zones):
+                      widths, heights, wh_ratios, x_coords, y_coords, pages, lines, zones):
     example = tf.train.SequenceExample()
 
     fl_labels = example.feature_lists.feature_list["labels"]
@@ -108,6 +110,14 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     fl_wh_ratio = example.feature_lists.feature_list["wh_ratios"]
     for wh_ratio in wh_ratios:
         fl_wh_ratio.feature.add().float_list.value.append(wh_ratio)
+
+    fl_x_coords = example.feature_lists.feature_list["x_coords"]
+    for x_coord in x_coords:
+        fl_x_coords.feature.add().int64_list.value.append(x_coord)
+
+    fl_y_coords = example.feature_lists.feature_list["y_coords"]
+    for y_coord in y_coords:
+        fl_y_coords.feature.add().int64_list.value.append(y_coord)
 
     # page, zone, line feats
     fl_page_id = example.feature_lists.feature_list["page_ids"]
@@ -171,6 +181,8 @@ def make_example(writer, page, update_vocab, update_chars):
     widths = np.zeros(max_len_with_pad, dtype=np.float64)
     heights = np.zeros(max_len_with_pad, dtype=np.float64)
     wh_ratios = np.zeros(max_len_with_pad, dtype=np.float64)
+    x_coords = np.zeros(max_len_with_pad, dtype=np.float64)
+    y_coords = np.zeros(max_len_with_pad, dtype=np.float64)
     # enclosing region information (keep track of what zone, page, or line each word is in)
     pages = np.zeros(max_len_with_pad, dtype=np.int64)
     lines = np.zeros(max_len_with_pad, dtype=np.int64)
@@ -216,7 +228,11 @@ def make_example(writer, page, update_vocab, update_chars):
         bottom_right = word.bottom_right
         height = word.height()
         width = word.width()
-        wh_ratio = width/height
+        if height != 0:
+            wh_ratio = width/height
+        else:
+            wh_ratio = 0
+        (x, y) = word.centerpoint()
 
         # get shape and add to shape map
         token_shape = word.shape()
@@ -249,6 +265,14 @@ def make_example(writer, page, update_vocab, update_chars):
         pages[i] = page_id
         lines[i] = line_id
         zones[i] = zone_id
+        x_coords[i] = x
+        y_coords[i] = y
+
+    # bin the x and y coordinates
+    x_bins = np.linspace(0, x_coords.max(), num=4)
+    x_coords = np.digitize(x_coords, x_bins)
+    y_bins = np.linspace(0, y_coords.max(), num=4)
+    y_coords = np.digitize(y_coords, y_bins)
 
     # TODO: why are we intmapping the labels here? is it because of earlier BIO processing?
 
@@ -268,6 +292,8 @@ def make_example(writer, page, update_vocab, update_chars):
         print("widths ", widths)
         print("heights ", heights)
         print("w/h ratios ", wh_ratios)
+        print("x coordinate bins ", x_coords)
+        print("y coordinate bins ", y_coords)
 
         print("pages ", pages)
         print("lines ", lines)
@@ -284,6 +310,8 @@ def make_example(writer, page, update_vocab, update_chars):
                       widths,
                       heights,
                       wh_ratios,
+                      x_coords,
+                      y_coords,
                       pages,
                       lines,
                       zones)
@@ -333,66 +361,88 @@ def doc_to_examples(total_docs, in_out):
 
     try:
         in_f, out_path = in_out
-        writer = tf.python_io.TFRecordWriter(out_path + '/examples.proto')
+        writer = tf.python_io.TFRecordWriter(out_path)
         print('Converting %s to %s' % (in_f, out_path))
+        # print('Converting %s ' % in_f)
         doc = parse_doc(in_f)
         # for page in doc.pages:
         #     make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars)
         # just start by trying first page only
-        make_example(writer, doc.pages[0], update_vocab, update_chars)
+        num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
         writer.close()
         print('\nDone processing %s.' % in_f)
     except KeyboardInterrupt:
         return 'KeyboardException'
 
-# def grotoap_to_examples():
-#     if not os.path.exists(FLAGS.out_dir):
-#         os.makedirs(FLAGS.out_dir)
-#
-#     # in_files = [in_f for in_f in FLAGS.in_files.split(',') if in_f]
-#     # out_paths = [FLAGS.out_dir + '/' + out_f for out_f in FLAGS.out_files.split(',') if out_f]
-#     in_files = sorted(glob.glob(FLAGS.trueviz_in_files))
-#     out_files = ['%s/%s.proto' % (FLAGS.out_dir, in_f.split('/')[-1]) for in_f in in_files]
-#
-#     total_docs = len(in_files)
+def grotoap_to_examples():
+    if not os.path.exists(FLAGS.out_dir):
+        os.makedirs(FLAGS.out_dir)
 
-    # print('Starting file process threads using %d threads' % FLAGS.num_threads)
-    # pool = multiprocessing.Pool(FLAGS.num_threads)
-    # try:
-    #     pool.map_async(partial(doc_to_examples, total_docs), zip(in_files, out_files)).get(999999)
-    #     pool.close()
-    #     pool.join()
-    # except KeyboardInterrupt:
-    #     pool.terminate()
+    # train_writer = tf.python_io.TFRecordWriter(FLAGS.out_dir + os.sep + 'grotoap.train.proto')
+    # test_writer = tf.python_io.TFRecordWriter(FLAGS.out_dir + os.sep + 'grotoap.test.proto')
+    # dev_writer = tf.python_io.TFRecordWriter(FLAGS.out_dir + os.sep + 'grotoap.dev.proto')
 
+    in_files = []
+    out_files = []
+    # TODO: point this at the grotoap directories, have one out file for each directory?
+    for subdir, dirs, files in os.walk(FLAGS.grotoap_dir):
+        for file in files:
+            if '.cxml' in file:
+                # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
+                filepath = subdir + os.sep + file
+                in_files.append(filepath)
+
+    # print(in_files)
+    # write examples to 10 TFRecord files
+    for i,f in enumerate(in_files):
+        # TODO: this doesn't work, it'll just overwrite the files every time a new writer is created...
+        # out_files.append('%s/%s.proto' % (FLAGS.out_dir, i % 10))
+        if i < 10000:
+            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.train.proto')
+        elif i < 11500:
+            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.test.proto')
+        else:
+            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.dev.proto')
+
+    # print(out_files)
+
+    # in_files = sorted(glob.glob(FLAGS.trueviz_in_files))
+    # out_files = ['%s/%s.proto' % (FLAGS.out_dir, in_f.split('/')[-1]) for in_f in in_files]
+
+    total_docs = len(in_files)
+
+    print('Starting file process threads using %d threads' % FLAGS.num_threads)
+    pool = multiprocessing.Pool(FLAGS.num_threads)
+    try:
+        pool.map_async(partial(doc_to_examples, total_docs), zip(in_files, out_files)).get(999999)
+        pool.close()
+        pool.join()
+    except KeyboardInterrupt:
+        pool.terminate()
+
+    # train_writer.close()
+    # test_writer.close()
+    # dev_writer.close()
+
+def export_maps():
     # export the string->int maps to file
-    # for f_str, id_map in [('label', label_map), ('token', token_map), ('shape', shape_map), ('char', char_map)]:
-    #     with open(FLAGS.out_dir + '/' + f_str + '.txt', 'w') as f:
-    #         [f.write(s + '\t' + str(i) + '\n') for (s, i) in id_map.items()]
+    print('exporting string->int maps')
+    for f_str, id_map in [('label', label_map), ('token', token_map), ('shape', shape_map), ('char', char_map)]:
+        with open(FLAGS.out_dir + '/' + f_str + '.txt', 'w') as f:
+            [f.write(s + '\t' + str(i) + '\n') for (s, i) in id_map.items()]
 
 def main(argv):
     print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))
     if FLAGS.out_dir == '':
         print('Must supply out_dir')
         sys.exit(1)
-    test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1276794.cxml'
-    doc_to_examples(1, (test_doc_path, FLAGS.out_dir))
-    filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
-                                                    num_epochs=None)
-    labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, page_ids, line_ids, zone_ids = parse_one_example(filename_queue)
-    # if FLAGS.debug:
-    #     print("labels ", map(lambda t: label_int_str_map[t], labels))
-    #     print("tokens ", map(lambda t: token_int_str_map[t], tokens))
-    #     print("chars", map(lambda t: char_int_str_map[t], chars))
-    #
-    #     print("shapes ", map(lambda t: shape_int_str_map[t], shapes))
-    #     print("widths ", widths)
-    #     print("heights ", heights)
-    #     print("w/h ratios ", wh_ratios)
-    #
-    #     print("pages ", page_ids)
-    #     print("lines ", line_ids)
-    #     print("zones ", zone_ids)
+    # test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
+    # doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
+    grotoap_to_examples()
+    export_maps()
+    # filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
+    #                                                 num_epochs=None)
+    # labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids = parse_one_example(filename_queue)
 
 if __name__ == '__main__':
     tf.app.run()

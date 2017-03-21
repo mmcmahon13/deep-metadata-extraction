@@ -25,6 +25,7 @@ class BoundedDocumentObject(DocumentObject):
         else:
             return None
 
+    # from grotoap paper: 1 typographic point equals to 1/72 of an inch
     def centerpoint(self):
         if not self.top_left == (None, None) and not self.bottom_right == (None, None):
             x = float(abs(self.top_left[0] + self.bottom_right[0]))/2
