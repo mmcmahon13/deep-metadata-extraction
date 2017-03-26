@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 
 # from src.models.batch_utils import *
-from src.processing.parse_docs_sax import *
+from parse_docs_sax import *
 
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
@@ -341,6 +341,23 @@ def doc_to_examples(in_file, writer):
     char_map[OOV_STR] = len(char_map)
     char_int_str_map[char_map[OOV_STR]] = OOV_STR
 
+    try:
+        # in_f, out_path = in_out
+        # writer = tf.python_io.TFRecordWriter(out_path)
+        # print('Converting %s to %s' % (in_f, out_path))
+        print('Converting %s ' % in_file)
+        doc = parse_doc(in_file)
+        # for page in doc.pages:
+        #     make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars)
+        # just start by trying first page only
+        num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
+        # writer.close()
+        print('\nDone processing %s.' % in_file)
+        return num_words, oov_count
+    except KeyboardInterrupt:
+        return 'KeyboardException'
+
+def dir_to_examples(root_dir, dir_out):
     # load vocab (from the embeddings file)
     if FLAGS.load_vocab != '':
         print("loading vocab...")
@@ -355,32 +372,22 @@ def doc_to_examples(in_file, writer):
                     token_map[word] = len(token_map)
                     token_int_str_map[token_map[word]] = word
 
-    try:
-        # in_f, out_path = in_out
-        # writer = tf.python_io.TFRecordWriter(out_path)
-        # print('Converting %s to %s' % (in_f, out_path))
-        print('Converting %s ' % in_file)
-        doc = parse_doc(in_file)
-        # for page in doc.pages:
-        #     make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars)
-        # just start by trying first page only
-        num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
-        # writer.close()
-        print('\nDone processing %s.' % in_file)
-    except KeyboardInterrupt:
-        return 'KeyboardException'
-
-def dir_to_examples(root_dir, dir_out):
     (dir_path, out_path) = dir_out
     print("Converting directory %s to TFRecord %s" % (dir_path, out_path))
     writer = tf.python_io.TFRecordWriter(out_path)
+    tot_words = 0
+    tot_oov = 0
     for root, dirs, files in os.walk(root_dir + os.sep + dir_path):
         for file in files:
             if '.cxml' in file:
                 # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
                 filepath = root + os.sep + file
-                doc_to_examples(filepath, writer)
+                num_words, oov_count = doc_to_examples(filepath, writer)
+                tot_words += num_words
+                tot_oov += oov_count
     print("Done with directory %s" % dir_path)
+    coverage = 1 - tot_oov/tot_words
+    print("Embeddings coverage: %f" % coverage)
     writer.close()
 
 

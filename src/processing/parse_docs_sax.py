@@ -4,7 +4,7 @@ from __future__ import print_function
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
 
-from src.processing.pdf_objects import *
+from pdf_objects import *
 
 
 # SAX content handler to assemble words and lines from the characters, print them to the specified file
@@ -131,6 +131,32 @@ class ParsTrueViz(ContentHandler):
             self.wordText = ""
             self.cur_line.addWord(self.cur_word)
 
+def words_to_bilou(doc):
+    last_label = ""
+    last_tag = ""
+    field_len = -1
+    words = doc.words()
+    for i, word in enumerate(words):
+        cur_label = word.label
+        if cur_label != last_label:
+            # B - current word is starting a new type
+            word.label = 'B-' + cur_label
+            # check if the previous word was part of a multi-word thing, or if it is a unit thing
+            if field_len > 1:
+                words[i - 1].label = words[i-1].label.replace('I-','L-')
+            elif field_len > 0:
+                words[i - 1].label = words[i - 1].label.replace('B-', 'U-')
+            field_len = 1
+        elif cur_label == last_label:
+            # I - current word is continuing a type
+            word.label = 'I-' + cur_label
+            field_len += 1
+        last_label = cur_label
+
+    if field_len > 1:
+        words[-1].label = words[-1].label.replace('I-', 'L-')
+    elif field_len > 0:
+        words[-1].label = words[-1].label.replace('B-', 'U-')
 
 def parse_doc(doc_path):
     parser = make_parser()
@@ -150,20 +176,23 @@ def main():
     # print(doc.getFullText())
     # print()
     print(doc.toString())
+    words_to_bilou(doc)
     print("\nWORDS\n")
     words = doc.words()
-    print("\nLINES\n")
-    lines = doc.lines()
-    print("\nZONES\n")
-    zones = doc.zones()
-
-    print("word text: ", words[1].text)
-    print("top left vertex: ",words[1].top_left)
-    print("bottom right vertex: ",words[1].bottom_right)
-    print("shape: ",words[1].shape())
-    print("width: ", words[1].width())
-    print("height: ",words[1].height())
-    print("center: ",words[1].centerpoint())
+    for word in words:
+        print('%s , %s' %(word, word.label))
+    # print("\nLINES\n")
+    # lines = doc.lines()
+    # print("\nZONES\n")
+    # zones = doc.zones()
+    #
+    # print("word text: ", words[1].text)
+    # print("top left vertex: ",words[1].top_left)
+    # print("bottom right vertex: ",words[1].bottom_right)
+    # print("shape: ",words[1].shape())
+    # print("width: ", words[1].width())
+    # print("height: ",words[1].height())
+    # print("center: ",words[1].centerpoint())
 
 if __name__ == '__main__':
     main()
