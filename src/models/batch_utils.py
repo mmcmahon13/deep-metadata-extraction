@@ -62,7 +62,7 @@ class SeqBatcher(object):
             'tokens': tf.FixedLenSequenceFeature([], tf.int64),
             'shapes': tf.FixedLenSequenceFeature([], tf.int64),
             'chars': tf.FixedLenSequenceFeature([], tf.int64),
-            # 'seq_len': tf.FixedLenSequenceFeature([], tf.int64),
+            'seq_len': tf.FixedLenSequenceFeature([], tf.int64),
             'tok_len': tf.FixedLenSequenceFeature([], tf.int64),
             'widths': tf.FixedLenSequenceFeature([], tf.float32),
             'heights': tf.FixedLenSequenceFeature([], tf.float32),
@@ -79,7 +79,7 @@ class SeqBatcher(object):
         tokens = example['tokens']
         shapes = example['shapes']
         chars = example['chars']
-        # seq_len = example['seq_len']
+        seq_len = example['seq_len']
         tok_len = example['tok_len']
         widths = example['widths']
         heights = example['heights']
@@ -91,7 +91,7 @@ class SeqBatcher(object):
         zone_ids = example['zone_ids']
 
         # context = c['context']
-        return labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids
+        return labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids
         # return labels, tokens, labels, labels, labels
 
     def input_pipeline(self, filenames, batch_size, num_buckets, num_epochs=None):

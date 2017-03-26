@@ -2,20 +2,15 @@
 from __future__ import division
 from __future__ import print_function
 
-import glob
 import multiprocessing
-import sys
-import re
 import os
 from functools import partial
+import codecs
 
 import tensorflow as tf
-import numpy as np
-# import partial
 
-from pdf_objects import *
-from parse_docs_sax import *
-from batch_utils import *
+from src.models.batch_utils import *
+from src.processing.parse_docs_sax import *
 
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
@@ -90,9 +85,9 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     for c in chars:
         fl_chars.feature.add().int64_list.value.append(c)
 
-    # fl_seq_len = example.feature_lists.feature_list["seq_len"]
-    # for seq_len in sent_lens:
-    #     fl_seq_len.feature.add().int64_list.value.append(seq_len)
+    fl_seq_len = example.feature_lists.feature_list["seq_len"]
+    for seq_len in page_lens:
+        fl_seq_len.feature.add().int64_list.value.append(seq_len)
 
     fl_tok_len = example.feature_lists.feature_list["tok_len"]
     for tok_len in tok_lens:
@@ -188,7 +183,7 @@ def make_example(writer, page, update_vocab, update_chars):
     lines = np.zeros(max_len_with_pad, dtype=np.int64)
     zones = np.zeros(max_len_with_pad, dtype=np.int64)
 
-    page_lens = []
+    page_lens = [len(word_tups)]
     tok_lens = []
 
     last_label = "O"
@@ -319,7 +314,7 @@ def make_example(writer, page, update_vocab, update_chars):
     return len(word_tups), oov_count, 1
 
 
-def doc_to_examples(total_docs, in_out):
+def doc_to_examples(in_file, writer):
     # convert all pages in a doc to examples
 
     update_vocab = True
@@ -360,26 +355,32 @@ def doc_to_examples(total_docs, in_out):
                     token_int_str_map[token_map[word]] = word
 
     try:
-        in_f, out_path = in_out
-        writer = tf.python_io.TFRecordWriter(out_path)
-        print('Converting %s to %s' % (in_f, out_path))
-        # print('Converting %s ' % in_f)
-        doc = parse_doc(in_f)
+        # in_f, out_path = in_out
+        # writer = tf.python_io.TFRecordWriter(out_path)
+        # print('Converting %s to %s' % (in_f, out_path))
+        print('Converting %s ' % in_file)
+        doc = parse_doc(in_file)
         # for page in doc.pages:
         #     make_example(writer, page, label_map, token_map, shape_map, char_map, update_vocab, update_chars)
         # just start by trying first page only
         num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
-        writer.close()
-        print('\nDone processing %s.' % in_f)
+        # writer.close()
+        print('\nDone processing %s.' % in_file)
     except KeyboardInterrupt:
         return 'KeyboardException'
 
-def dir_to_examples(dir_path, out_path):
-    for subdir, dirs, files in os.walk(dir_path):
+def dir_to_examples(root_dir, dir_out):
+    (dir_path, out_path) = dir_out
+    print("Converting directory %s to TFRecord %s" % (dir_path, out_path))
+    writer = tf.python_io.TFRecordWriter(out_path)
+    for root, dirs, files in os.walk(root_dir + os.sep + dir_path):
         for file in files:
             if '.cxml' in file:
                 # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
-                filepath = subdir + os.sep + file
+                filepath = root + os.sep + file
+                doc_to_examples(filepath, writer)
+    print("Done with directory %s" % dir_path)
+    writer.close()
 
 
 def grotoap_to_examples():
@@ -390,39 +391,43 @@ def grotoap_to_examples():
     # test_writer = tf.python_io.TFRecordWriter(FLAGS.out_dir + os.sep + 'grotoap.test.proto')
     # dev_writer = tf.python_io.TFRecordWriter(FLAGS.out_dir + os.sep + 'grotoap.dev.proto')
 
-    in_files = []
+    # in_files = []
+    in_dirs = []
     out_files = []
     # TODO: point this at the grotoap directories, have one out file for each directory?
-    for subdir, dirs, files in os.walk(FLAGS.grotoap_dir):
-        for file in files:
-            if '.cxml' in file:
-                # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
-                filepath = subdir + os.sep + file
-                in_files.append(filepath)
+    for root, subdirs, files in os.walk(FLAGS.grotoap_dir):
+        for subdir in subdirs:
+            in_dirs.append(subdir)
+        # for file in files:
+        #     if '.cxml' in file:
+        #         # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
+        #         filepath = subdir + os.sep + file
+        #         in_files.append(filepath)
 
     # print(in_files)
     # write examples to 10 TFRecord files
-    for i,f in enumerate(in_files):
-        # TODO: this doesn't work, it'll just overwrite the files every time a new writer is created...
-        # out_files.append('%s/%s.proto' % (FLAGS.out_dir, i % 10))
-        if i < 10000:
-            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.train.proto')
-        elif i < 11500:
-            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.test.proto')
-        else:
-            out_files.append(FLAGS.out_dir + os.sep + 'grotoap.dev.proto')
+    # for i,f in enumerate(in_files):
+    #     # TODO: this doesn't work, it'll just overwrite the files every time a new writer is created...
+    #     # out_files.append('%s/%s.proto' % (FLAGS.out_dir, i % 10))
+    #     if i < 10000:
+    #         out_files.append(FLAGS.out_dir + os.sep + 'grotoap.train.proto')
+    #     elif i < 11500:
+    #         out_files.append(FLAGS.out_dir + os.sep + 'grotoap.test.proto')
+    #     else:
+    #         out_files.append(FLAGS.out_dir + os.sep + 'grotoap.dev.proto')
 
     # print(out_files)
 
     # in_files = sorted(glob.glob(FLAGS.trueviz_in_files))
-    # out_files = ['%s/%s.proto' % (FLAGS.out_dir, in_f.split('/')[-1]) for in_f in in_files]
+    out_files = ['%s/%s.proto' % (FLAGS.out_dir, in_f.split('/')[-1]) for in_f in in_dirs]
 
-    total_docs = len(in_files)
+    total_dirs = len(in_dirs)
 
     print('Starting file process threads using %d threads' % FLAGS.num_threads)
     pool = multiprocessing.Pool(FLAGS.num_threads)
     try:
-        pool.map_async(partial(doc_to_examples, total_docs), zip(in_files, out_files)).get(999999)
+        # pool.map_async(partial(doc_to_examples, total_docs), zip(in_files, out_files)).get(999999)
+        pool.map_async(partial(dir_to_examples, FLAGS.grotoap_dir), zip(in_dirs, out_files)).get(999999)
         pool.close()
         pool.join()
     except KeyboardInterrupt:
@@ -450,9 +455,9 @@ def main(argv):
     if FLAGS.out_dir == '':
         print('Must supply out_dir')
         sys.exit(1)
-    test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
-    doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
-    # grotoap_to_examples()
+    # test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
+    # doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
+    grotoap_to_examples()
     export_maps()
     # filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
     #                                                 num_epochs=None)

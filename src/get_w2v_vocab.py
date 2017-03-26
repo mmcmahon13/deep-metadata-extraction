@@ -1,12 +1,8 @@
 import argparse
-import locale
 import os
-import sys
 
-import pickle
+from src.processing.parse_docs_sax import *
 
-from pdf_objects import *
-from parse_docs_sax import *
 
 def create_vocab(embeddings_filepath):
     word_count = 0

@@ -1,10 +1,11 @@
 from __future__ import division
 from __future__ import print_function
 
-import codecs
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
-from pdf_objects import *
+
+from src.processing.pdf_objects import *
+
 
 # SAX content handler to assemble words and lines from the characters, print them to the specified file
 # TODO: update this to use the same preproccessing as the word embeddings (same tokenization, replace unicode with ascii)
