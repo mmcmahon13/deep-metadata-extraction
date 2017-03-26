@@ -6,10 +6,11 @@ import multiprocessing
 import os
 from functools import partial
 import codecs
-
+import sys
+import numpy as np
 import tensorflow as tf
 
-from src.models.batch_utils import *
+# from src.models.batch_utils import *
 from src.processing.parse_docs_sax import *
 
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
