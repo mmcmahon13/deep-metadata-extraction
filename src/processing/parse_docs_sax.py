@@ -131,14 +131,14 @@ class ParsTrueViz(ContentHandler):
             self.wordText = ""
             self.cur_line.addWord(self.cur_word)
 
-def words_to_bilou(doc):
+def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', 'AFFILIATION']):
     last_label = ""
     last_tag = ""
     field_len = -1
     words = doc.words()
     for i, word in enumerate(words):
         cur_label = word.label
-        if cur_label != last_label:
+        if cur_label in labels and cur_label != last_label:
             # B - current word is starting a new type
             word.label = 'B-' + cur_label
             # check if the previous word was part of a multi-word thing, or if it is a unit thing
@@ -147,10 +147,18 @@ def words_to_bilou(doc):
             elif field_len > 0:
                 words[i - 1].label = words[i - 1].label.replace('B-', 'U-')
             field_len = 1
-        elif cur_label == last_label:
+        elif cur_label in labels and cur_label == last_label:
             # I - current word is continuing a type
             word.label = 'I-' + cur_label
             field_len += 1
+        else:
+            # O - current word is not one of the types we care about
+            word.label = 'O'
+            if field_len > 1:
+                words[i - 1].label = words[i-1].label.replace('I-','L-')
+            elif field_len > 0:
+                words[i - 1].label = words[i - 1].label.replace('B-', 'U-')
+            field_len = 0
         last_label = cur_label
 
     if field_len > 1:
@@ -180,7 +188,7 @@ def main():
     print("\nWORDS\n")
     words = doc.words()
     for word in words:
-        print('%s , %s' %(word, word.label))
+        print('%s , %s' %(word.text, word.label))
     # print("\nLINES\n")
     # lines = doc.lines()
     # print("\nZONES\n")
