@@ -166,6 +166,10 @@ def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', '
     elif field_len > 0:
         words[-1].label = words[-1].label.replace('B-', 'U-')
 
+# TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does
+def match_dictionaries():
+    pass
+
 def parse_doc(doc_path):
     parser = make_parser()
     parser.setFeature(feature_namespaces, False)

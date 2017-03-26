@@ -111,7 +111,6 @@ class BiLSTM(object):
         word_embeddings = tf.nn.embedding_lookup(self.w_e, input_x1)
 
         with tf.variable_scope("forward", reuse=reuse):
-
             input_list = [word_embeddings]
             input_size = self.embedding_size
             if self.use_characters:
@@ -123,6 +122,7 @@ class BiLSTM(object):
                 shape_embeddings = tf.nn.embedding_lookup(w_s, input_x2)
                 input_list.append(shape_embeddings)
                 input_size += self.shape_size
+            # TODO: add other features to input list, concat them to end of input_feats
 
             input_feats = tf.concat(2, input_list)
             # self.input_feats_expanded = tf.expand_dims(self.input_feats, 1)
