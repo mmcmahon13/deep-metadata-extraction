@@ -171,6 +171,7 @@ def make_example(writer, page, update_vocab, update_chars):
     lines = np.zeros(max_len_with_pad, dtype=np.int64)
     zones = np.zeros(max_len_with_pad, dtype=np.int64)
 
+    # todo should this just be a fixed len feature instead?
     page_lens = [len(word_tups)]
     tok_lens = []
 
@@ -306,15 +307,8 @@ def make_example(writer, page, update_vocab, update_chars):
 def doc_to_examples(in_file, writer):
     # convert all pages in a doc to examples
 
-    update_vocab = True
+    update_vocab = False
     update_chars = True
-
-    # add out of vocab string to the token, character maps
-    token_map[OOV_STR] = len(token_map)
-    token_int_str_map[token_map[OOV_STR]] = OOV_STR
-
-    char_map[OOV_STR] = len(char_map)
-    char_int_str_map[char_map[OOV_STR]] = OOV_STR
 
     try:
         print('Converting %s ' % in_file)
@@ -351,7 +345,7 @@ def dir_to_examples(root_dir, dir_out):
                 tot_words += num_words
                 tot_oov += oov_count
     print("Done with directory %s" % dir_path)
-    coverage = 1 - tot_oov/len(token_int_str_map)
+    coverage = 1 - tot_oov/tot_words
     print("Embeddings coverage: %f" % coverage)
     writer.close()
 
@@ -372,6 +366,15 @@ def grotoap_to_examples(use_threads=False):
                     # print("adding word %s" % word)
                     token_map[word] = len(token_map)
                     token_int_str_map[token_map[word]] = word
+
+     # add out of vocab string to the token, character maps
+    token_map[OOV_STR] = len(token_map)
+    token_int_str_map[token_map[OOV_STR]] = OOV_STR
+
+    char_map[OOV_STR] = len(char_map)
+    char_int_str_map[char_map[OOV_STR]] = OOV_STR
+
+    print("%d words in vocab" % len(token_map))
 
     if not os.path.exists(FLAGS.out_dir):
         os.makedirs(FLAGS.out_dir)
