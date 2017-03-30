@@ -30,12 +30,6 @@ FLAGS = tf.app.flags.FLAGS
 OOV_STR = "<OOV>"
 
 
-# TODO: do we need these? i think pat only used them to keep track of the processing progress
-queue = multiprocessing.Queue()
-queue.put(0)
-lock = multiprocessing.Lock()
-
-
 # TODO since this will be multithreaded, protect these with locks?
 label_map = {}
 token_map = {}
@@ -46,6 +40,8 @@ label_int_str_map = {}
 token_int_str_map = {}
 char_int_str_map = {}
 shape_int_str_map = {}
+
+embeddings_counts = {}
 
 def generate_bio(label, last_label):
     pass
@@ -159,7 +155,6 @@ def make_example(writer, page, update_vocab, update_chars):
     chars = np.zeros(sum_word_len, dtype=np.int64)
     # vector of label ids
     intmapped_labels = np.zeros(max_len_with_pad, dtype=np.int64)
-    # TODO: add something for location (like a bin of regions or something)
     # geometrical information:
     widths = np.zeros(max_len_with_pad, dtype=np.float64)
     heights = np.zeros(max_len_with_pad, dtype=np.float64)
@@ -356,6 +351,7 @@ def grotoap_to_examples(use_threads=False):
     :return:
     '''
     # load vocab (from the embeddings file)
+    # todo keep track of usage counts, remove unused embeddings from the saved vocab?
     if FLAGS.load_vocab != '':
         print("loading vocab...")
         update_vocab = False

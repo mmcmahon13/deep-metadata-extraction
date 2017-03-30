@@ -96,7 +96,8 @@ class SeqBatcher(object):
 
     def input_pipeline(self, filenames, batch_size, num_buckets, num_epochs=None):
         filename_queue = tf.train.string_input_producer(filenames, num_epochs=num_epochs, shuffle=True)
-        labels, tokens, shapes, chars, seq_len, tok_len = self.example_parser(filename_queue)
+        labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, \
+        line_ids, zone_ids = self.example_parser(filename_queue)
         # min_after_dequeue defines how big a buffer we will randomly sample
         #   from -- bigger means better shuffling but slower start up and more
         #   memory used.
@@ -113,7 +114,9 @@ class SeqBatcher(object):
             next_batch = tf.train.batch([labels, tokens, shapes, chars, seq_len, tok_len], batch_size=batch_size, capacity=capacity,
                                         dynamic_pad=True, allow_smaller_final_batch=True)
         else:
-            bucket, next_batch = tf.contrib.training.bucket([labels, tokens, shapes, chars, seq_len, tok_len], np.random.randint(num_buckets),
+            bucket, next_batch = tf.contrib.training.bucket([labels, tokens, shapes, chars, seq_len, tok_len, widths, heights,
+                                                             wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids],
+                                                            np.random.randint(num_buckets),
                                                         batch_size, num_buckets, num_threads=1, capacity=capacity,
                                                         dynamic_pad=True, allow_smaller_final_batch=False)
         return next_batch

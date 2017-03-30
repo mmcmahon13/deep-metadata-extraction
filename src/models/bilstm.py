@@ -93,6 +93,7 @@ class BiLSTM(object):
                 self.loss = tf.div(tf.reduce_sum(masked_losses), tf.reduce_sum(self.input_mask))
             self.loss += self.l2_penalty * self.l2_loss
 
+            # run the forward pass to get scores
             self.unflat_no_dropout_scores = self.forward(self.input_x1, self.input_x2, self.max_seq_len,
                                                          1.0, 1.0, 1.0)
 
@@ -140,6 +141,7 @@ class BiLSTM(object):
                                                                  sequence_length=self.flat_sequence_lengths)
                 hidden_outputs = tf.concat(2, lstm_outputs)
 
+            # concatenate the results of the forward and backward cells
             h_concat_flat = tf.reshape(hidden_outputs, [-1, total_output_width])
 
             # Add dropout
