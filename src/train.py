@@ -4,7 +4,7 @@ import sys
 import time
 import tensorflow as tf
 import numpy as np
-from models.batch_utils import SeqBatcher
+from models.batch_utils import SeqBatcher, Batcher
 from models.bilstm import BiLSTM
 from models.bilstm_char import BiLSTMChar
 from models.cnn_char import CNNChar
@@ -218,8 +218,8 @@ def train():
     shape_domain_size = len(shape_id_str_map)
 
     with tf.Graph().as_default():
-        train_batcher = SeqBatcher(FLAGS.train_dir, FLAGS.batch_size)
-        dev_batcher = (FLAGS.dev_dir, FLAGS.batch_size)
+        train_batcher = Batcher(FLAGS.train_dir, FLAGS.batch_size)
+        dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size)
         train_eval_batch_size = FLAGS.batch_size  # num_train_examples
         # train_eval_batcher = NodeBatcher(train_dir, seq_len_with_pad, train_eval_batch_size, num_epochs=1)
         train_eval_batcher = SeqBatcher(FLAGS.train_dir, train_eval_batch_size, num_buckets=0, num_epochs=1)
