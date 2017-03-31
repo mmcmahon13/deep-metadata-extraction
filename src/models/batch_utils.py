@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from collections import defaultdict
 from random import shuffle
+import os
 import sys
 
 FLAGS = tf.app.flags.FLAGS
@@ -30,9 +31,14 @@ class Batcher(object):
                 done = True
         # now flatten
         for seq_len, batches in self._data.items():
-            self._data[seq_len] = [(label_batch[i], token_batch[i], shape_batch[i], char_batch[i], seq_len_batch[i], tok_len_batch[i])
-                                  for (label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_len_batch) in batches
+            self._data[seq_len] = [(label_batch[i], token_batch[i], shape_batch[i], char_batch[i], seq_len_batch[i], tok_len_batch[i],
+                                    width_batch[i], height_batch[i], wh_ratio_batch[i], x_coord_batch[i], y_coord_batch[i],
+                                    page_id_batch[i], line_id_batch[i], zone_id_batch[i])
+                                  for (label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_len_batch,
+                                       width_batch, height_batch, wh_ratio_batch, x_coord_batch, y_coord_batch,
+                                       page_id_batch, line_id_batch, zone_id_batch) in batches
                                   for i in range(label_batch.shape[0])]
+
         self.reset_batch_pointer()
 
     def next_batch(self):
@@ -47,13 +53,25 @@ class Batcher(object):
         self._ends[bucket] = min(self._ends[bucket] + self._batch_size, len(self._data[bucket]))
         self._bucket_probs[bucket] = max(0, self._ends[bucket] - self._starts[bucket])
 
+        # labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids
         _label_batch = np.array([b[0] for b in batch])
         _token_batch = np.array([b[1] for b in batch])
         _shape_batch = np.array([b[2] for b in batch])
         _char_batch = np.array([b[3] for b in batch])
         _seq_len_batch = np.array([b[4] for b in batch])
         _tok_len_batch = np.array([b[5] for b in batch])
-        batch = (_label_batch, _token_batch, _shape_batch, _char_batch, _seq_len_batch, _tok_len_batch)
+        _width_batch = np.array([b[6] for b in batch])
+        _height_batch = np.array([b[7] for b in batch])
+        _wh_ratio_batch = np.array([b[8] for b in batch])
+        _x_coord_batch = np.array([b[9] for b in batch])
+        _y_coord_batch = np.array([b[10] for b in batch])
+        _page_id_batch = np.array([b[11] for b in batch])
+        _line_id_batch = np.array([b[12] for b in batch])
+        _zone_id_batch = np.array([b[13] for b in batch])
+
+        batch = (_label_batch, _token_batch, _shape_batch, _char_batch, _seq_len_batch, _tok_len_batch,
+                 _width_batch, _height_batch, _wh_ratio_batch, _x_coord_batch, _y_coord_batch, _page_id_batch,
+                 _line_id_batch, _zone_id_batch)
 
         return batch
 
@@ -83,8 +101,14 @@ class SeqBatcher(object):
         self._epoch = 0
         self._step = 1.
         self.num_epochs = num_epochs
-        in_file = [in_dir + '/examples.proto']
-        self.next_batch_op = self.input_pipeline(in_file, self._batch_size, self.num_buckets, self.num_epochs)
+        # todo change this to take multiple proto files from the same directory
+        in_files = []
+        for root, dirs, files in os.walk(in_dir):
+            for file in files:
+                if file.contains('.proto'):
+                    in_files.append(file)
+        # in_file = [in_dir + '/examples.proto']
+        self.next_batch_op = self.input_pipeline(in_files, self._batch_size, self.num_buckets, self.num_epochs)
 
     def example_parser(self, filename_queue):
         reader = tf.TFRecordReader()
@@ -143,7 +167,9 @@ class SeqBatcher(object):
         #                                 dynamic_pad=True, allow_smaller_final_batch=True)
 
         if num_buckets == 0:
-            next_batch = tf.train.batch([labels, tokens, shapes, chars, seq_len, tok_len], batch_size=batch_size, capacity=capacity,
+            next_batch = tf.train.batch([labels, tokens, shapes, chars, seq_len, tok_len, widths, heights,
+                                        wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids],
+                                        batch_size=batch_size, capacity=capacity,
                                         dynamic_pad=True, allow_smaller_final_batch=True)
         else:
             bucket, next_batch = tf.contrib.training.bucket([labels, tokens, shapes, chars, seq_len, tok_len, widths, heights,
