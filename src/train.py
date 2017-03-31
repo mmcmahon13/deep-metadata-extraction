@@ -22,7 +22,7 @@ tf.app.flags.DEFINE_string('embeddings', '', 'path to embeddings file')
 tf.app.flags.DEFINE_integer('embed_dim', 200, 'dimensions of the words embeddings')
 
 # character embeddings
-tf.app.flags.DEFINE_integer('char_dim', 25, 'character embedding dimension')
+tf.app.flags.DEFINE_integer('char_dim', 0, 'character embedding dimension') # set to 25?
 tf.app.flags.DEFINE_integer('char_tok_dim', 0, 'character token embedding dimension')
 tf.app.flags.DEFINE_string('char_model', 'lstm', 'character embedding model (lstm, cnn)')
 
@@ -275,8 +275,9 @@ def train():
 
 
 
-def main():
+def main(argv):
+    print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))
     train()
 
 if __name__ == '__main__':
-    main()
+    tf.app.run()

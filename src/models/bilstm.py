@@ -74,7 +74,10 @@ class BiLSTM(object):
 
         nonzero_elements = tf.not_equal(self.sequence_lengths, tf.zeros_like(self.sequence_lengths))
         count_nonzero_per_row = tf.reduce_sum(tf.to_int32(nonzero_elements), reduction_indices=1)
-        self.flat_sequence_lengths = tf.add(tf.reduce_sum(self.sequence_lengths, 1), tf.scalar_mul(2, count_nonzero_per_row))
+        # todo: this is the wrong type or something?
+        self.flat_sequence_lengths = tf.cast(tf.add(tf.reduce_sum(self.sequence_lengths, 1), tf.scalar_mul(2, count_nonzero_per_row)), tf.int64)
+
+        # tf.Print(self.flat_sequence_lengths, [self.flat_sequence_lengths.type])
 
         self.unflat_scores = self.forward(self.input_x1, self.input_x2, self.max_seq_len,
                                           self.hidden_dropout_keep_prob,
