@@ -196,6 +196,12 @@ def make_example(writer, page, update_vocab, update_chars):
                 token_map[token_normalized] = len(token_map)
                 token_int_str_map[token_map[token_normalized]] = token_normalized
 
+        # keep track of how often embeddings are used so we can form a final
+        # if token_normalized not in embeddings_counts:
+        #     oov_count += 1
+        # else:
+        #     embeddings_counts[token_normalized] += 1
+
         label_bilou = label
 
         # get bounding box info (and other geometrical features?)
@@ -314,6 +320,7 @@ def doc_to_examples(in_file, writer):
         num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
         # writer.close()
         print('\nDone processing %s.' % in_file)
+        print(num_words, oov_count)
         return num_words, oov_count
     except KeyboardInterrupt:
         return 'KeyboardException'

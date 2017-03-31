@@ -72,7 +72,7 @@ class Document(DocumentObject):
                     for word in line.words:
                         # print(word.id + '\t' + word.text + '\t' + word.label + '\t' + str(word.top_left) + '\t' + str(word.bottom_right))
                         words.append(word)
-        print("Num words: ", len(words))
+        # print("Num words: ", len(words))
         return words
 
     def lines(self):
