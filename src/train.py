@@ -35,6 +35,7 @@ tf.app.flags.DEFINE_integer('lstm_dim', 2048, 'lstm internal dimension')
 tf.app.flags.DEFINE_integer('batch_size', 10, 'batch size')
 tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accuracy')
 tf.app.flags.DEFINE_boolean('memmap_train', True, 'whether to load all training examples into memory')
+tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 
 # hyperparams
 tf.app.flags.DEFINE_string('nonlinearity', 'relu', 'nonlinearity function to use (tanh, sigmoid, relu)')
@@ -116,7 +117,6 @@ def get_trainable_params():
     print("Total trainable parameters: %d" % (total_parameters))
 
 
-# todo feed in embeddings here, since it seems I can't load them?
 def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text=""):
     predictions = []
     for b, (eval_label_batch, eval_token_batch, eval_shape_batch, eval_char_batch, eval_seq_len_batch, eval_tok_len_batch,
@@ -272,8 +272,13 @@ def train():
                                         save_summaries_secs=0
                                         )
 
+        training_start_time = time.time()
 
+        # create session
+        with sv.managed_session(FLAGS.master, config=tf.ConfigProto(allow_soft_placement=True)) as sess:
 
+            # load batches
+            load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
 def main(argv):
     print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))

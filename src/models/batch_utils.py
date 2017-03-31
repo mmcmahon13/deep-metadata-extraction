@@ -6,42 +6,74 @@ import sys
 
 FLAGS = tf.app.flags.FLAGS
 
-# just for testing that things are being serialized as expected
-# def parse_one_example(filename_queue):
-#     reader = tf.TFRecordReader()
-#     key, record_string = reader.read(filename_queue)
-#     features = {
-#         'labels': tf.FixedLenSequenceFeature([], tf.int64),
-#         'tokens': tf.FixedLenSequenceFeature([], tf.int64),
-#         'shapes': tf.FixedLenSequenceFeature([], tf.int64),
-#         'chars': tf.FixedLenSequenceFeature([], tf.int64),
-#         # 'seq_len': tf.FixedLenSequenceFeature([], tf.int64),
-#         'tok_len': tf.FixedLenSequenceFeature([], tf.int64),
-#         'widths': tf.FixedLenSequenceFeature([], tf.float32),
-#         'heights': tf.FixedLenSequenceFeature([], tf.float32),
-#         'wh_ratios': tf.FixedLenSequenceFeature([], tf.float32),
-#         'page_ids': tf.FixedLenSequenceFeature([], tf.int64),
-#         'line_ids': tf.FixedLenSequenceFeature([], tf.int64),
-#         'zone_ids': tf.FixedLenSequenceFeature([], tf.int64)
-#     }
-#
-#     _, example = tf.parse_single_sequence_example(serialized=record_string, sequence_features=features)
-#     labels = example['labels']
-#     tokens = example['tokens']
-#     shapes = example['shapes']
-#     chars = example['chars']
-#     # seq_len = example['seq_len']
-#     tok_len = example['tok_len']
-#     widths = example['widths']
-#     heights = example['heights']
-#     wh_ratios = example['wh_ratios']
-#     page_ids = example['page_ids']
-#     line_ids = example['line_ids']
-#     zone_ids = example['zone_ids']
-#
-#     # context = c['context']
-#     return labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, page_ids, line_ids, zone_ids
-    # return labels, tokens, labels, labels, labels
+# Emma Strubell's batcher
+class Batcher(object):
+    def __init__(self, in_dir, batch_size, num_epochs=None):
+        self._batch_size = batch_size
+        self._epoch = 0
+        self._step = 0.
+        self._data = defaultdict(list)
+        self._starts = {}
+        self._ends = {}
+        self._bucket_probs = {}
+        self.sequence_batcher = SeqBatcher(in_dir, batch_size, 0, num_epochs=1)
+
+    def load_and_bucket_data(self, sess):
+        done = False
+        i = 0
+        while not done:
+            try:
+                batch = sess.run(self.sequence_batcher.next_batch_op)
+                self._data[batch[0].shape[1]].append(batch)
+                i += 1
+            except Exception as e:
+                done = True
+        # now flatten
+        for seq_len, batches in self._data.items():
+            self._data[seq_len] = [(label_batch[i], token_batch[i], shape_batch[i], char_batch[i], seq_len_batch[i], tok_len_batch[i])
+                                  for (label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_len_batch) in batches
+                                  for i in range(label_batch.shape[0])]
+        self.reset_batch_pointer()
+
+    def next_batch(self):
+        if sum(self._bucket_probs.values()) == 0:
+            self.reset_batch_pointer()
+        # select bucket to create batch from
+        self._step += 1
+        bucket = self.select_bucket()
+        batch = self._data[bucket][self._starts[bucket]:self._ends[bucket]]
+        # update pointers
+        self._starts[bucket] = self._ends[bucket]
+        self._ends[bucket] = min(self._ends[bucket] + self._batch_size, len(self._data[bucket]))
+        self._bucket_probs[bucket] = max(0, self._ends[bucket] - self._starts[bucket])
+
+        _label_batch = np.array([b[0] for b in batch])
+        _token_batch = np.array([b[1] for b in batch])
+        _shape_batch = np.array([b[2] for b in batch])
+        _char_batch = np.array([b[3] for b in batch])
+        _seq_len_batch = np.array([b[4] for b in batch])
+        _tok_len_batch = np.array([b[5] for b in batch])
+        batch = (_label_batch, _token_batch, _shape_batch, _char_batch, _seq_len_batch, _tok_len_batch)
+
+        return batch
+
+    def reset_batch_pointer(self):
+        # shuffle each bucket
+        for bucket in self._data.values():
+            shuffle(bucket)
+        self._epoch += 1
+        self._step = 0.
+        # print('\nStarting epoch ' + str(self._epoch))
+        self._starts = {i: 0 for i in self._data.keys()}
+        self._ends = {i: min(self._batch_size, len(examples)) for i, examples in self._data.items()}
+        self._bucket_probs = {i: len(l) for (i, l) in self._data.items()}
+
+    def select_bucket(self):
+        buckets, weights = zip(*[(i, p) for i, p in self._bucket_probs.items() if p > 0])
+        total = float(sum(weights))
+        probs = [w / total for w in weights]
+        bucket = np.random.choice(buckets, p=probs)
+        return bucket
 
 # Emma Strubell's implementation of a sequence batcher with shuffling (since it doesn't seem to exist in TF)
 class SeqBatcher(object):
