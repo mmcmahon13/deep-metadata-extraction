@@ -32,9 +32,9 @@ tf.app.flags.DEFINE_integer('shape_dim', 5, 'shape embedding dimension')
 tf.app.flags.DEFINE_integer('lstm_dim', 2048, 'lstm internal dimension')
 
 # training
-tf.app.flags.DEFINE_integer('batch_size', 10, 'batch size')
+tf.app.flags.DEFINE_integer('batch_size', 50, 'batch size')
 tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accuracy')
-tf.app.flags.DEFINE_boolean('memmap_train', True, 'whether to load all training examples into memory')
+tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training examples into memory')
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 
 # hyperparams
@@ -56,6 +56,7 @@ FLAGS = tf.app.flags.FLAGS
 
 def load_intmaps():
     print("Loading vocabulary maps...")
+    sys.stdout.flush()
     with open(FLAGS.train_dir + '/label.txt', 'r') as f:
         labels_str_id_map = {l.split('\t')[0]: int(l.split('\t')[1].strip()) for l in f.readlines()}
         labels_id_str_map = {i: s for s, i in labels_str_id_map.items()}
@@ -73,10 +74,12 @@ def load_intmaps():
         char_id_str_map = {i: s for s, i in char_str_id_map.items()}
         char_domain_size = len(char_id_str_map)
     print("Loaded.")
+    sys.stdout.flush()
     return labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map
 
 def load_embeddings(vocab_str_id_map):
     print("Loading embeddings...")
+    sys.stdout.flush()
     vocab_size = len(vocab_str_id_map)
     # load embeddings, if given; initialize in range [-.01, .01]
     embeddings_shape = (vocab_size - 1, FLAGS.embed_dim)
@@ -103,6 +106,7 @@ def load_embeddings(vocab_str_id_map):
     # TODO i don't really understand how the embeddings are used in the preprocessing?
     print("Loaded %d/%d embeddings (%2.2f%% coverage)" % (
     embeddings_used, vocab_size, embeddings_used / vocab_size * 100))
+    sys.stdout.flush()
     return embeddings
 
 def get_trainable_params():
@@ -115,6 +119,7 @@ def get_trainable_params():
             variable_parametes *= dim.value
         total_parameters += variable_parametes
     print("Total trainable parameters: %d" % (total_parameters))
+    sys.stdout.flush()
 
 
 def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text=""):
@@ -158,31 +163,48 @@ def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text
 
     return predictions
 
+# TODO: change this to not load all batches into memory at once?
 def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width=0):
 
     dev_batches = []
     # load all the dev batches into memory
     done = False
     print("Loading dev batches...")
+    sys.stdout.flush()
+    num_batches = 0
     while not done:
         try:
             dev_batch = sess.run(dev_batcher.next_batch_op)
-            dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch = dev_batch
+            print("loaded dev batch %d" % num_batches)
+            sys.stdout.flush()
+            dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch, \
+            dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch, dev_y_coord_batch, \
+            dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch = dev_batch
+            print("batch length: %d" % len(dev_seq_len_batch))
+            sys.stdout.flush()
             mask_batch = np.zeros(dev_token_batch.shape)
             for i, seq_lens in enumerate(dev_seq_len_batch):
+                # print("creating mask for batch %d" % i)
+                sys.stdout.flush()
+                # todo is this masking correctly? why are we adding the seq_len to start each time?
                 start = pad_width
                 for seq_len in seq_lens:
                     mask_batch[i, start:start + seq_len] = 1
                     # + (2 if FLAGS.start_end else 1) * pad_width
                     start += seq_len
             dev_batches.append((dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch,
-                                dev_tok_len_batch, mask_batch))
+                                dev_tok_len_batch, dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch,
+                                dev_y_coord_batch, dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch, mask_batch))
+            num_batches += 1
         except:
+            print("Error loading dev batches")
             done = True
 
     print("Dev batches loaded.")
+    sys.stdout.flush()
 
     print("Loading train batches...")
+    sys.stdout.flush()
     train_batches = []
     if FLAGS.train_eval:
         # load all the train batches into memory
@@ -190,7 +212,9 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
         while not done:
             try:
                 train_batch = sess.run(train_eval_batcher.next_batch_op)
-                train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch = train_batch
+                train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
+                train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
+                train_page_id_batch, train_line_id_batch, train_zone_id_batch = train_batch
                 mask_batch = np.zeros(train_token_batch.shape)
                 for i, seq_lens in enumerate(train_seq_len_batch):
                     start = pad_width
@@ -198,13 +222,16 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                         mask_batch[i, start:start + seq_len] = 1
                         # + (2 if FLAGS.start_end else 1) * pad_width
                         start += seq_len
-                train_batches.append((train_label_batch, train_token_batch, train_shape_batch, train_char_batch,
-                                  train_seq_len_batch, train_tok_len_batch, mask_batch))
+                train_batches.append((train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
+                                        train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
+                                        train_page_id_batch, train_line_id_batch, train_zone_id_batch))
             except Exception as e:
+                print("Error loading dev batches")
                 done = True
     if FLAGS.memmap_train:
         train_batcher.load_and_bucket_data(sess)
     print("Train batches loaded.")
+    sys.stdout.flush()
 
 def train():
     # load preprocessed maps and embeddings
@@ -251,8 +278,6 @@ def train():
 
         # Define Training procedure
         global_step = tf.Variable(0, name='global_step', trainable=False)
-        global_step_context = tf.Variable(0, name='context_agg_global_step', trainable=False)
-        global_step_all = tf.Variable(0, name='context_agg_all_global_step', trainable=False)
 
         optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.lr, beta1=FLAGS.beta1, beta2=FLAGS.beta2,
                                            epsilon=FLAGS.epsilon, name="optimizer")
@@ -261,6 +286,7 @@ def train():
 
         print("model vars: %d" % len(model_vars))
         print(map(lambda v: v.name, model_vars))
+        sys.stdout.flush()
         get_trainable_params()
 
         tf.initialize_all_variables()
@@ -276,12 +302,22 @@ def train():
 
         # create session
         with sv.managed_session(FLAGS.master, config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+            print("session created")
+            sys.stdout.flush()
+            # start queue runner threads
+            threads = tf.train.start_queue_runners(sess=sess)
 
             # load batches
             load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
+            # join threads
+            sv.coord.request_stop()
+            sv.coord.join(threads)
+            sess.close()
+
 def main(argv):
     print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))
+    sys.stdout.flush()
     train()
 
 if __name__ == '__main__':

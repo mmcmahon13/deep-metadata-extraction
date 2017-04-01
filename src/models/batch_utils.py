@@ -105,8 +105,9 @@ class SeqBatcher(object):
         in_files = []
         for root, dirs, files in os.walk(in_dir):
             for file in files:
-                if file.contains('.proto'):
-                    in_files.append(file)
+                if '.proto' in file:
+                    in_files.append(root + os.sep + file)
+        print(in_files)
         # in_file = [in_dir + '/examples.proto']
         self.next_batch_op = self.input_pipeline(in_files, self._batch_size, self.num_buckets, self.num_epochs)
 
