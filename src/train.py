@@ -175,12 +175,12 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     while not done:
         try:
             dev_batch = sess.run(dev_batcher.next_batch_op)
-            print("loaded dev batch %d" % num_batches)
+            # print("loaded dev batch %d" % num_batches)
             sys.stdout.flush()
             dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch, \
             dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch, dev_y_coord_batch, \
             dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch = dev_batch
-            print("batch length: %d" % len(dev_seq_len_batch))
+            # print("batch length: %d" % len(dev_seq_len_batch))
             sys.stdout.flush()
             mask_batch = np.zeros(dev_token_batch.shape)
             for i, seq_lens in enumerate(dev_seq_len_batch):
@@ -197,10 +197,11 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                                 dev_y_coord_batch, dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch, mask_batch))
             num_batches += 1
         except:
-            print("Error loading dev batches")
+            # print("Error loading dev batches")
             done = True
 
-    print("Dev batches loaded.")
+    print("%d dev batches loaded." % len(dev_batches))
+    print()
     sys.stdout.flush()
 
     print("Loading train batches...")
@@ -226,12 +227,15 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                                         train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
                                         train_page_id_batch, train_line_id_batch, train_zone_id_batch))
             except Exception as e:
-                print("Error loading dev batches")
+                # print("Error loading train batches")
                 done = True
     if FLAGS.memmap_train:
         train_batcher.load_and_bucket_data(sess)
-    print("Train batches loaded.")
+    print("%d train batches loaded." % len(train_batches))
+    print()
     sys.stdout.flush()
+
+    return dev_batches, train_batches
 
 def train():
     # load preprocessed maps and embeddings
@@ -245,11 +249,11 @@ def train():
     shape_domain_size = len(shape_id_str_map)
 
     with tf.Graph().as_default():
-        train_batcher = Batcher(FLAGS.train_dir, FLAGS.batch_size)
-        dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size)
-        train_eval_batch_size = FLAGS.batch_size  # num_train_examples
-        # train_eval_batcher = NodeBatcher(train_dir, seq_len_with_pad, train_eval_batch_size, num_epochs=1)
-        train_eval_batcher = SeqBatcher(FLAGS.train_dir, train_eval_batch_size, num_buckets=0, num_epochs=1)
+        train_batcher = Batcher(FLAGS.train_dir, FLAGS.batch_size) if FLAGS.memmap_train else SeqBatcher(FLAGS.train_dir,
+                                                                                                   FLAGS.batch_size)
+        dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
+
+        train_eval_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
         # create character embedding model and train char embeddings:
         # todo this is broken, fix it and add it in when I get the rest of the network running
@@ -286,6 +290,7 @@ def train():
 
         print("model vars: %d" % len(model_vars))
         print(map(lambda v: v.name, model_vars))
+        print()
         sys.stdout.flush()
         get_trainable_params()
 
@@ -308,7 +313,8 @@ def train():
             threads = tf.train.start_queue_runners(sess=sess)
 
             # load batches
-            load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
+            print()
+            dev_batches, train_batches = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
             # join threads
             sv.coord.request_stop()
