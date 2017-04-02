@@ -30,17 +30,6 @@ FLAGS = tf.app.flags.FLAGS
 OOV_STR = "<OOV>"
 
 
-# TODO since this will be multithreaded, protect these with locks?
-label_map = {}
-token_map = {}
-shape_map = {}
-char_map = {}
-# just inverses of the maps for printing and junk
-label_int_str_map = {}
-token_int_str_map = {}
-char_int_str_map = {}
-shape_int_str_map = {}
-
 embeddings_counts = {}
 
 def generate_bio(label, last_label):
@@ -114,7 +103,8 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     writer.write(example.SerializeToString())
 
 
-def make_example(writer, page, update_vocab, update_chars):
+def make_example(writer, page, update_vocab, update_chars,
+                 label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map):
     '''
     given a page from a document, make an example out of it (e.g. serialize it into a sequence of labeled word features)
     :param writer:
@@ -305,7 +295,8 @@ def make_example(writer, page, update_vocab, update_chars):
     return len(word_tups), oov_count, 1
 
 
-def doc_to_examples(in_file, writer):
+def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, label_int_str_map,
+                    token_int_str_map, char_int_str_map, shape_int_str_map):
     # convert all pages in a doc to examples
 
     update_vocab = False
@@ -317,7 +308,9 @@ def doc_to_examples(in_file, writer):
         if FLAGS.bilou:
             words_to_bilou(doc)
         # just start by trying first page only
-        num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars)
+        num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars,
+                                               label_map, token_map, shape_map, char_map, label_int_str_map,
+                                               token_int_str_map, char_int_str_map, shape_int_str_map)
         # writer.close()
         print('\nDone processing %s.' % in_file)
         print(num_words, oov_count)
@@ -325,7 +318,9 @@ def doc_to_examples(in_file, writer):
     except KeyboardInterrupt:
         return 'KeyboardException'
 
-def dir_to_examples(root_dir, dir_out):
+def dir_to_examples(root_dir, label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map,
+                    char_int_str_map, shape_int_str_map,
+                    dir_out):
     '''
     Convert a directory of TrueViz document files to one TFRecord file containing examples from all of them
 
@@ -343,7 +338,8 @@ def dir_to_examples(root_dir, dir_out):
             if '.cxml' in file:
                 # filepath = FLAGS.grotoap_dir + os.sep + subdir + file
                 filepath = root + os.sep + file
-                num_words, oov_count = doc_to_examples(filepath, writer)
+                num_words, oov_count = doc_to_examples(filepath, writer, label_map, token_map, shape_map, char_map,
+                                                       label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map)
                 tot_words += num_words
                 tot_oov += oov_count
     print("Done with directory %s" % dir_path)
@@ -352,7 +348,8 @@ def dir_to_examples(root_dir, dir_out):
     writer.close()
 
 
-def grotoap_to_examples(use_threads=False):
+def grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map,
+                        char_int_str_map, shape_int_str_map, use_threads=False):
     '''
     Convert entire GROTOAP set to TFRecords (iterate over the subdirectors 00, 01, ..., 99 and create a TFRecord for each)
     :return:
@@ -400,16 +397,18 @@ def grotoap_to_examples(use_threads=False):
         pool = multiprocessing.Pool(FLAGS.num_threads)
         try:
             # pool.map_async(partial(doc_to_examples, total_docs), zip(in_files, out_files)).get(999999)
-            pool.map_async(partial(dir_to_examples, FLAGS.grotoap_dir), zip(in_dirs, out_files)).get(999999)
+            pool.map_async(partial(dir_to_examples, FLAGS.grotoap_dir, label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map,
+                    char_int_str_map, shape_int_str_map), zip(in_dirs, out_files)).get(999999)
             pool.close()
             pool.join()
         except KeyboardInterrupt:
             pool.terminate()
     else:
         for (in_dir, out_file) in zip(in_dirs, out_files):
-            dir_to_examples(FLAGS.grotoap_dir, (in_dir, out_file))
+            dir_to_examples(FLAGS.grotoap_dir, label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map,
+                    char_int_str_map, shape_int_str_map, (in_dir, out_file))
 
-def export_maps():
+def export_maps(label_map, token_map, shape_map, char_map):
     # export the string->int maps to file
     print(len(label_map))
     print(len(token_map))
@@ -429,8 +428,25 @@ def main(argv):
         sys.exit(1)
     # test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
     # doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
-    grotoap_to_examples()
-    export_maps()
+
+    # TODO since this will be multithreaded, protect these with locks?
+    label_map = {}
+    token_map = {}
+    shape_map = {}
+    char_map = {}
+    # just inverses of the maps for printing and junk
+    label_int_str_map = {}
+    token_int_str_map = {}
+    char_int_str_map = {}
+    shape_int_str_map = {}
+
+    if FLAGS.num_threads > 1:
+        use_threads = True
+    else:
+        use_threads = False
+
+    grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map, use_threads)
+    export_maps(label_map, token_map, shape_map, char_map)
     # filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
     #                                                 num_epochs=None)
     # labels, tokens, shapes, chars, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids = parse_one_example(filename_queue)
@@ -438,4 +454,4 @@ def main(argv):
 if __name__ == '__main__':
     tf.app.run()
 
-# python grotoap_to_tfrecords.py --out_dir $DATA_DIR --load_vocab /iesl/canvas/mmcmahon/embeddings/PubMed-w2v.txt --bilou
+# python grotoap_to_tfrecords.py --out_dir $DATA_DIR/pruned_pmc/train --load_vocab $DATA_DIR/pruned_PMC.txt --grotoap_dir /iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset --bilou

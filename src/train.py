@@ -36,6 +36,8 @@ tf.app.flags.DEFINE_integer('batch_size', 50, 'batch size')
 tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accuracy')
 tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training examples into memory')
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
+tf.app.flags.DEFINE_integer('max_epochs', 100, 'train for this many epochs')
+tf.app.flags.DEFINE_boolean('until_convergence', False, 'whether to run until convergence')
 
 # hyperparams
 tf.app.flags.DEFINE_string('nonlinearity', 'relu', 'nonlinearity function to use (tanh, sigmoid, relu)')
@@ -54,6 +56,7 @@ tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty d
 
 FLAGS = tf.app.flags.FLAGS
 
+# load the maps created during preprocessing
 def load_intmaps():
     print("Loading vocabulary maps...")
     sys.stdout.flush()
@@ -77,6 +80,7 @@ def load_intmaps():
     sys.stdout.flush()
     return labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map
 
+# load the word embeddings
 def load_embeddings(vocab_str_id_map):
     print("Loading embeddings...")
     sys.stdout.flush()
@@ -109,6 +113,7 @@ def load_embeddings(vocab_str_id_map):
     sys.stdout.flush()
     return embeddings
 
+# print out the number of trainable params in the model
 def get_trainable_params():
     total_parameters=0
     for variable in tf.trainable_variables():
@@ -121,8 +126,9 @@ def get_trainable_params():
     print("Total trainable parameters: %d" % (total_parameters))
     sys.stdout.flush()
 
-
-def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text=""):
+# run the model on dev/test data and make predictions
+# TODO untested
+def evaluate(sess, model, char_embedding_model, eval_batches, extra_text=""):
     predictions = []
     for b, (eval_label_batch, eval_token_batch, eval_shape_batch, eval_char_batch, eval_seq_len_batch, eval_tok_len_batch,
     eval_mask_batch) in enumerate(eval_batches):
@@ -145,6 +151,7 @@ def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text
             char_embedding_model.input_dropout_keep_prob: FLAGS.char_input_dropout
         }
 
+        # TODO update this with new features
         basic_feeds = {
             model.input_x1: eval_token_batch,
             model.input_x2: eval_shape_batch,
@@ -163,7 +170,7 @@ def make_predictions(sess, model, char_embedding_model, eval_batches, extra_text
 
     return predictions
 
-# TODO: change this to not load all batches into memory at once?
+# TODO: change this to not load all batches into memory at once? or is it fine? will have to test with bigger files
 def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width=0):
 
     dev_batches = []
@@ -206,13 +213,16 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
 
     print("Loading train batches...")
     sys.stdout.flush()
+    num_batches = 0
     train_batches = []
     if FLAGS.train_eval:
-        # load all the train batches into memory
+        # load all the train batches into memory if we want to report training accuracy
         done = False
         while not done:
             try:
                 train_batch = sess.run(train_eval_batcher.next_batch_op)
+                print("loaded train batch %d" % num_batches)
+                sys.stdout.flush()
                 train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                 train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
                 train_page_id_batch, train_line_id_batch, train_zone_id_batch = train_batch
@@ -226,6 +236,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                 train_batches.append((train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                                         train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
                                         train_page_id_batch, train_line_id_batch, train_zone_id_batch))
+                num_batches += 1
             except Exception as e:
                 # print("Error loading train batches")
                 done = True
@@ -236,6 +247,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     sys.stdout.flush()
 
     return dev_batches, train_batches
+
 
 def train():
     # load preprocessed maps and embeddings
@@ -253,7 +265,7 @@ def train():
                                                                                                    FLAGS.batch_size)
         dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
-        train_eval_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
+        train_eval_batcher = SeqBatcher(FLAGS.train_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
         # create character embedding model and train char embeddings:
         # todo this is broken, fix it and add it in when I get the rest of the network running
@@ -316,6 +328,43 @@ def train():
             print()
             dev_batches, train_batches = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
+            num_train_examples = 0
+            for b in train_batches:
+                num_train_examples += len(b)
+
+            num_dev_examples = 0
+            for b in dev_batches:
+                num_dev_examples += len(b)
+
+            log_every = int(max(100, num_train_examples / 5))
+
+            # start the training loop
+            print("Training on %d pages (%d examples)" % (num_train_examples, num_train_examples))
+            start_time = time.time()
+            train_batcher._step = 1.0
+            converged = False
+            examples = 0
+            log_every_running = log_every
+            epoch_loss = 0.0
+            num_lower = 0
+            training_iteration = 0
+            speed_num = 0.0
+            speed_denom = 0.0
+            # todo we might want this to be false for finetuning or something?
+            update_context = True
+            while not sv.should_stop() and training_iteration < FLAGS.max_epochs and not (FLAGS.until_convergence and converged):
+                if examples >= num_train_examples:
+                    training_iteration += 1
+
+                    if FLAGS.train_eval:
+                        evaluate(sess, train_batches, update_context, "TRAIN (iteration %d)" % training_iteration)
+                        sys.stdout.flush()
+                    print()
+                    # TODO implement evalaution metrics
+                    f1_micro, precision = evaluate(sess, dev_batches, update_context,
+                                                         "TEST (iteration %d)" % training_iteration)
+                    print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
+                    sys.stdout.flush()
             # join threads
             sv.coord.request_stop()
             sv.coord.join(threads)
@@ -328,3 +377,5 @@ def main(argv):
 
 if __name__ == '__main__':
     tf.app.run()
+
+# srun python train.py --train_dir $HOME/data/pruned_pmc/train --dev_dir $HOME/data/pruned_pmc/dev --embeddings $HOME/data/embeddings/PMC-w2v.txt--train_eval
