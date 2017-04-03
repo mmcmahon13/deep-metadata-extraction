@@ -1,5 +1,7 @@
 from __future__ import print_function
 from __future__ import division
+
+import sys
 import tensorflow as tf
 import numpy as np
 import tf_utils
@@ -30,6 +32,16 @@ class BiLSTM(object):
 
         # shape embedding input
         self.input_x2 = tf.placeholder(tf.int64, [None, None], name="input_x2")
+
+        # geometric inputs
+        self.widths = tf.placeholder(tf.float64, [None, None, 1], name="widths")
+        self.heights = tf.placeholder(tf.float64, [None, None, 1], name="heights")
+        self.wh_ratios = tf.placeholder(tf.float64, [None, None, 1], name="wh_ratios")
+        self.x_coords = tf.placeholder(tf.float64, [None, None, 1], name="x_coords")
+        self.y_coords = tf.placeholder(tf.float64, [None, None, 1], name="y_coords")
+        self.pages = tf.placeholder(tf.int64, [None, None, 1], name="pages")
+        self.lines = tf.placeholder(tf.int64, [None, None, 1], name="lines")
+        self.zones = tf.placeholder(tf.int64, [None, None, 1], name="zones")
 
         # labels
         self.input_y = tf.placeholder(tf.int64, [None, None], name="input_y")
@@ -126,7 +138,25 @@ class BiLSTM(object):
                 shape_embeddings = tf.nn.embedding_lookup(w_s, input_x2)
                 input_list.append(shape_embeddings)
                 input_size += self.shape_size
+
+
             # TODO: add other features to input list, concat them to end of input_feats
+            # todo this is the wrong shape to be concatenated
+            # it's giving some issue with the typing, so I'm just casting everythint ot be the same
+            input_list.append(tf.cast(self.widths, tf.float32))
+            input_list.append(tf.cast(self.heights, tf.float32))
+            input_list.append(tf.cast(self.wh_ratios, tf.float32))
+            input_list.append(tf.cast(self.x_coords, tf.float32))
+            input_list.append(tf.cast(self.y_coords, tf.float32))
+            input_list.append(tf.cast(self.pages, tf.float32))
+            input_list.append(tf.cast(self.lines, tf.float32))
+            input_list.append(tf.cast(self.zones, tf.float32))
+
+            input_size += 8
+
+            print(word_embeddings.get_shape())
+            # (w, h) = self.widths.get_shape()
+            # print(tf.reshape(self.widths, (w, h, 1)).get_shape())
 
             input_feats = tf.concat(2, input_list)
             # self.input_feats_expanded = tf.expand_dims(self.input_feats, 1)
