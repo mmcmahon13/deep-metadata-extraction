@@ -13,6 +13,9 @@ import tensorflow as tf
 # from src.models.batch_utils import *
 from parse_docs_sax import *
 
+# TODO we may need to arbitrarily split the pages into smaller sequences
+# the training op is taking too long and using too much memory
+
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
 tf.app.flags.DEFINE_string('load_vocab', '', 'directory containing embedding vocab files to load')

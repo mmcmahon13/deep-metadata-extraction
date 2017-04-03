@@ -421,10 +421,10 @@ def train():
                     train_batcher.next_batch() if FLAGS.memmap_train else sess.run(train_batcher.next_batch_op)
 
                 # check that shapes look correct
-                # print("label_batch_shape: ", label_batch.shape)
-                # print("token batch shape: ", token_batch.shape)
-                # print("shape batch shape: ", shape_batch.shape)
-                # print("char batch shape: ", char_batch.shape)
+                print("label_batch_shape: ", label_batch.shape)
+                print("token batch shape: ", token_batch.shape)
+                print("shape batch shape: ", shape_batch.shape)
+                print("char batch shape: ", char_batch.shape)
                 print("seq_len batch shape: ", seq_len_batch.shape)
                 # print("tok_len batch shape: ", tok_lengths_batch.shape)
                 # print("widths_batch shape: ", widths_batch.shape)
@@ -453,7 +453,8 @@ def train():
                 # make mask out of seq lens
                 batch_size, batch_seq_len = token_batch.shape
 
-                # print(batch_seq_len)
+                print(batch_seq_len)
+
 
                 # pad the character batch?
                 char_lens = np.sum(tok_lengths_batch, axis=1)
@@ -466,7 +467,7 @@ def train():
 
                 num_sentences_batch = np.sum(seq_len_batch != 0, axis=1)
 
-                # print(seq_len_batch)
+                print(seq_len_batch)
                 # print(num_sentences_batch)
                 pad_width = 0
 
@@ -491,9 +492,9 @@ def train():
 
                 # apply word dropout
                 # create word dropout mask
-                word_probs = np.random.random(token_batch.shape)
-                drop_indices = np.where((word_probs > FLAGS.word_dropout)) #& (token_batch != vocab_str_id_map["<PAD>"]))
-                token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
+                # word_probs = np.random.random(token_batch.shape)
+                # drop_indices = np.where((word_probs > FLAGS.word_dropout)) #& (token_batch != vocab_str_id_map["<PAD>"]))
+                # token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
 
                 # TODO what is going on here
                 # # sample padding
@@ -565,6 +566,7 @@ def train():
 
                 print("Running training op:")
                 sys.stdout.flush()
+                # tf.Print(model.flat_sequence_lengths, [model.flat_sequence_lengths])
                 _, loss = sess.run([train_op, model.loss], feed_dict=lstm_feed)
 
                 print("Current training loss: %f" % loss)

@@ -89,8 +89,9 @@ class BiLSTM(object):
         nonzero_elements = tf.not_equal(self.sequence_lengths, tf.zeros_like(self.sequence_lengths))
         count_nonzero_per_row = tf.reduce_sum(tf.to_int32(nonzero_elements), reduction_indices=1)
         # todo: this is the wrong type or something?
-        self.flat_sequence_lengths = tf.cast(tf.add(tf.reduce_sum(self.sequence_lengths, 1), tf.scalar_mul(2, count_nonzero_per_row)), tf.int64)
-        print(self.flat_sequence_lengths.get_shape())
+        # self.flat_sequence_lengths = tf.cast(tf.add(tf.reduce_sum(self.sequence_lengths, 1), tf.scalar_mul(2, count_nonzero_per_row)), tf.int64)
+        # print(self.flat_sequence_lengths.get_shape())
+        self.flat_sequence_lengths = tf.reshape(self.sequence_lengths, [-1])
 
         # tf.Print(self.flat_sequence_lengths, [self.flat_sequence_lengths.type])
 
@@ -174,7 +175,8 @@ class BiLSTM(object):
                 fwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
                 bwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
                 lstm_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwd_cell, cell_bw=bwd_cell, dtype=tf.float32,
-                                                                 inputs=input_feats_expanded_drop,
+                                                                 # inputs=input_feats_expanded_drop,
+                                                                 inputs = input_feats,
                                                                  parallel_iterations=50,
                                                                  sequence_length=self.flat_sequence_lengths)
                 hidden_outputs = tf.concat(2, lstm_outputs)

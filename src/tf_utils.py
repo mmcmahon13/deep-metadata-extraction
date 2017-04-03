@@ -1,4 +1,6 @@
 from __future__ import division
+
+import sys
 import tensorflow as tf
 import numpy as np
 
@@ -28,6 +30,8 @@ def embedding_values(shape, old=False):
 # TODO this fails with files >2GB
 # shard the embeddings?
 def initialize_embeddings(shape, name, pretrained=None, old=False):
+    print("Initializing embeddings")
+    sys.stdout.flush()
     zero_pad = tf.constant(0.0, dtype=tf.float32, shape=[1, shape[1]])
     if pretrained is None:
         embeddings = embedding_values(shape, old)
