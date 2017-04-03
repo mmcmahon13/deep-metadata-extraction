@@ -38,6 +38,7 @@ tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 tf.app.flags.DEFINE_integer('max_epochs', 100, 'train for this many epochs')
 tf.app.flags.DEFINE_boolean('until_convergence', False, 'whether to run until convergence')
+tf.app.flags.DEFINE_boolean('use_geometric_feats', False, 'whether to use the geometric features')
 
 # hyperparams
 tf.app.flags.DEFINE_string('nonlinearity', 'relu', 'nonlinearity function to use (tanh, sigmoid, relu)')
@@ -48,13 +49,26 @@ tf.app.flags.DEFINE_float('beta2', 0.999, 'beta2')
 tf.app.flags.DEFINE_float('epsilon', 1e-8, 'epsilon')
 
 # dropouts
-tf.app.flags.DEFINE_float('char_input_dropout', 1.0, 'dropout for character embeddings')
+tf.app.flags.DEFINE_float('hidden_dropout', .75, 'hidden layer dropout rate')
+tf.app.flags.DEFINE_float('hidden2_dropout', .75, 'hidden layer 2 dropout rate')
+tf.app.flags.DEFINE_float('input2_dropout', .75, 'input layer 2 dropout rate')
+
+tf.app.flags.DEFINE_float('input_dropout', 1.0, 'input layer (word embedding) dropout rate')
+tf.app.flags.DEFINE_float('middle_dropout', 1.0, 'middle layer dropout rate')
+tf.app.flags.DEFINE_float('word_dropout', 1.0, 'whole-word (-> oov) dropout rate')
+
+# penalties
+tf.app.flags.DEFINE_float('regularize_drop_penalty', 0.0, 'penalty for dropout regularization')
 
 # saving and loading models
 tf.app.flags.DEFINE_string('model_dir', '', 'save model to this dir (if empty do not save)')
 tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty do not load)')
 
 FLAGS = tf.app.flags.FLAGS
+
+
+def sample_pad_size():
+    return np.random.randint(1, FLAGS.max_additional_pad) if FLAGS.max_additional_pad > 0 else 0
 
 # load the maps created during preprocessing
 def load_intmaps():
@@ -129,9 +143,12 @@ def get_trainable_params():
 # run the model on dev/test data and make predictions
 # TODO untested
 def evaluate(sess, model, char_embedding_model, eval_batches, extra_text=""):
+    print(extra_text)
+    sys.stdout.flush()
     predictions = []
     for b, (eval_label_batch, eval_token_batch, eval_shape_batch, eval_char_batch, eval_seq_len_batch, eval_tok_len_batch,
-    eval_mask_batch) in enumerate(eval_batches):
+            eval_width_batch, eval_height_batch, eval_wh_ratio_batch, eval_x_coord_batch, eval_y_coord_batch,
+            eval_page_id_batch, eval_line_ids_batch, eval_zone_id_batch, eval_mask_batch) in enumerate(eval_batches):
         batch_size, batch_seq_len = eval_token_batch.shape
 
         char_lens = np.sum(eval_tok_len_batch, axis=1)
@@ -151,7 +168,10 @@ def evaluate(sess, model, char_embedding_model, eval_batches, extra_text=""):
             char_embedding_model.input_dropout_keep_prob: FLAGS.char_input_dropout
         }
 
-        # TODO update this with new features
+        print(eval_height_batch.get_shape())
+        sys.stdout.flush()
+
+        # todo need to reshape these to add a third dimension
         basic_feeds = {
             model.input_x1: eval_token_batch,
             model.input_x2: eval_shape_batch,
@@ -159,7 +179,15 @@ def evaluate(sess, model, char_embedding_model, eval_batches, extra_text=""):
             model.input_mask: eval_mask_batch,
             model.max_seq_len: batch_seq_len,
             model.batch_size: batch_size,
-            model.sequence_lengths: eval_seq_len_batch
+            model.sequence_lengths: eval_seq_len_batch,
+            model.widths: eval_width_batch,
+            model.heights: eval_height_batch,
+            model.wh_ratios: eval_wh_ratio_batch,
+            model.x_coords: eval_x_coord_batch,
+            model.y_coords: eval_y_coord_batch,
+            model.pages: eval_page_id_batch,
+            model.lines: eval_line_ids_batch,
+            model.zones: eval_zone_id_batch
         }
 
         basic_feeds.update(char_embedding_feeds)
@@ -179,6 +207,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     print("Loading dev batches...")
     sys.stdout.flush()
     num_batches = 0
+    num_dev_examples = 0
     while not done:
         try:
             dev_batch = sess.run(dev_batcher.next_batch_op)
@@ -187,8 +216,9 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
             dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch, \
             dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch, dev_y_coord_batch, \
             dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch = dev_batch
-            # print("batch length: %d" % len(dev_seq_len_batch))
+            print("batch length: %d" % len(dev_seq_len_batch))
             sys.stdout.flush()
+            num_dev_examples += len(dev_seq_len_batch)
             mask_batch = np.zeros(dev_token_batch.shape)
             for i, seq_lens in enumerate(dev_seq_len_batch):
                 # print("creating mask for batch %d" % i)
@@ -214,6 +244,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     print("Loading train batches...")
     sys.stdout.flush()
     num_batches = 0
+    num_train_examples = 0
     train_batches = []
     if FLAGS.train_eval:
         # load all the train batches into memory if we want to report training accuracy
@@ -227,6 +258,9 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                 train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
                 train_page_id_batch, train_line_id_batch, train_zone_id_batch = train_batch
                 mask_batch = np.zeros(train_token_batch.shape)
+                print("batch length: %d" % len(train_seq_len_batch))
+                sys.stdout.flush()
+                num_train_examples += len(train_seq_len_batch)
                 for i, seq_lens in enumerate(train_seq_len_batch):
                     start = pad_width
                     for seq_len in seq_lens:
@@ -246,7 +280,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     print()
     sys.stdout.flush()
 
-    return dev_batches, train_batches
+    return dev_batches, train_batches, num_dev_examples, num_train_examples
 
 
 def train():
@@ -269,13 +303,14 @@ def train():
 
         # create character embedding model and train char embeddings:
         # todo this is broken, fix it and add it in when I get the rest of the network running
-        # print("creating and training character embeddings")
-        # char_embedding_model = BiLSTMChar(char_domain_size, FLAGS.char_dim, int(FLAGS.char_tok_dim / 2)) \
-        #     if FLAGS.char_dim > 0 and FLAGS.char_model == "lstm" else \
-        #     (CNNChar(char_domain_size, FLAGS.char_dim, FLAGS.char_tok_dim, layers_map[0][1]['width'])
-        #      if FLAGS.char_dim > 0 and FLAGS.char_model == "cnn" else None)
-        # char_embeddings = char_embedding_model.outputs if char_embedding_model is not None else None
-        char_embeddings = None
+        if FLAGS.char_dim > 0 and FLAGS.char_model == "lstm":
+            print("creating and training character embeddings")
+            char_embedding_model = BiLSTMChar(char_domain_size, FLAGS.char_dim, int(FLAGS.char_tok_dim / 2))
+        # elif FLAGS.char_dim > 0 and FLAGS.char_model == "cnn":
+        #     char_embedding_model = CNNChar(char_domain_size, FLAGS.char_dim, FLAGS.char_tok_dim, layers_map[0][1]['width'])
+        else:
+            char_embedding_model = None
+        char_embeddings = char_embedding_model.outputs if char_embedding_model is not None else None
 
         # create BiLSTM model
         model = BiLSTM(
@@ -290,7 +325,8 @@ def train():
             viterbi=False, #viterbi=FLAGS.viterbi,
             hidden_dim=FLAGS.lstm_dim,
             char_embeddings=char_embeddings,
-            embeddings=embeddings)
+            embeddings=embeddings,
+            use_geometric_feats=FLAGS.use_geometric_feats)
 
         # Define Training procedure
         global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -299,6 +335,8 @@ def train():
                                            epsilon=FLAGS.epsilon, name="optimizer")
 
         model_vars = [v for v in tf.all_variables() if 'context_agg' not in v.name]
+
+        train_op = optimizer.minimize(model.loss, global_step=global_step, var_list=model_vars)
 
         print("model vars: %d" % len(model_vars))
         print(map(lambda v: v.name, model_vars))
@@ -326,20 +364,24 @@ def train():
 
             # load batches
             print()
-            dev_batches, train_batches = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
+            dev_batches, train_batches, num_dev_examples, num_train_examples = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
-            num_train_examples = 0
-            for b in train_batches:
-                num_train_examples += len(b)
-
-            num_dev_examples = 0
-            for b in dev_batches:
-                num_dev_examples += len(b)
+            # this seems wrong?
+            # num_train_examples = 0
+            # for b in train_batches:
+            #     num_train_examples += len(b)
+            #
+            # num_dev_examples = 0
+            # for b in dev_batches:
+            #     num_dev_examples += len(b)
+            #
+            # print("num dev examples: %d" % num_dev_examples)
 
             log_every = int(max(100, num_train_examples / 5))
 
             # start the training loop
             print("Training on %d pages (%d examples)" % (num_train_examples, num_train_examples))
+            sys.stdout.flush()
             start_time = time.time()
             train_batcher._step = 1.0
             converged = False
@@ -353,18 +395,184 @@ def train():
             # todo we might want this to be false for finetuning or something?
             update_context = True
             while not sv.should_stop() and training_iteration < FLAGS.max_epochs and not (FLAGS.until_convergence and converged):
-                if examples >= num_train_examples:
-                    training_iteration += 1
+                print("training iteration %d" % training_iteration)
+                sys.stdout.flush()
+                training_iteration += 1
+                # if examples >= num_train_examples:
+                #     training_iteration += 1
+                #     # print("iteration %d" % training_iteration)
+                #     sys.stdout.flush()
+                #
+                #     if FLAGS.train_eval:
+                #         evaluate(sess, train_batches, update_context, "TRAIN (iteration %d)" % training_iteration)
+                #         sys.stdout.flush()
+                #     print()
+                #     # TODO implement evalaution metrics
+                #     f1_micro, precision = evaluate(sess, dev_batches, update_context,
+                #                                          "TEST (iteration %d)" % training_iteration)
+                #     print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
+                #     sys.stdout.flush()
 
-                    if FLAGS.train_eval:
-                        evaluate(sess, train_batches, update_context, "TRAIN (iteration %d)" % training_iteration)
-                        sys.stdout.flush()
-                    print()
-                    # TODO implement evalaution metrics
-                    f1_micro, precision = evaluate(sess, dev_batches, update_context,
-                                                         "TEST (iteration %d)" % training_iteration)
-                    print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
-                    sys.stdout.flush()
+
+                # do training
+                label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_lengths_batch,\
+                    widths_batch, heights_batch, wh_ratios_batch, x_coords_batch, y_coords_batch,\
+                    page_ids_batch, line_ids_batch, zone_ids_batch = \
+                    train_batcher.next_batch() if FLAGS.memmap_train else sess.run(train_batcher.next_batch_op)
+
+                # check that shapes look correct
+                # print("label_batch_shape: ", label_batch.shape)
+                # print("token batch shape: ", token_batch.shape)
+                # print("shape batch shape: ", shape_batch.shape)
+                # print("char batch shape: ", char_batch.shape)
+                print("seq_len batch shape: ", seq_len_batch.shape)
+                # print("tok_len batch shape: ", tok_lengths_batch.shape)
+                # print("widths_batch shape: ", widths_batch.shape)
+                # print("heights_batch shape: ", heights_batch.shape)
+                # print("ratios_batch shape: ", wh_ratios_batch.shape)
+                # print("x_coords shape: ", x_coords_batch.shape)
+                # print("y_coords shape: ", y_coords_batch.shape)
+                # print("pages shape: ", page_ids_batch.shape)
+                # print("lines shape: ", line_ids_batch.shape)
+                # print("zones shape: ", zone_ids_batch.shape)
+                #
+                # print("Max sequence length in batch: %d" % np.max(seq_len_batch))
+                sys.stdout.flush()
+
+                # reshape the features to be 3d tensors with 3rd dim = 1 (batch size) x (seq_len) x (1)
+                print("Reshaping features....")
+                widths_batch = np.expand_dims(widths_batch, axis=2)
+                heights_batch = np.expand_dims(heights_batch, axis=2)
+                wh_ratios_batch = np.expand_dims(wh_ratios_batch, axis=2)
+                x_coords_batch = np.expand_dims(x_coords_batch, axis=2)
+                y_coords_batch = np.expand_dims(y_coords_batch, axis=2)
+                page_ids_batch = np.expand_dims(page_ids_batch, axis=2)
+                line_ids_batch = np.expand_dims(line_ids_batch, axis=2)
+                zone_ids_batch = np.expand_dims(zone_ids_batch, axis=2)
+
+                # make mask out of seq lens
+                batch_size, batch_seq_len = token_batch.shape
+
+                # print(batch_seq_len)
+
+                # pad the character batch?
+                char_lens = np.sum(tok_lengths_batch, axis=1)
+                max_char_len = np.max(tok_lengths_batch)
+                padded_char_batch = np.zeros((batch_size, max_char_len * batch_seq_len))
+                for b in range(batch_size):
+                    char_indices = [item for sublist in [range(i * max_char_len, i * max_char_len + d) for i, d in
+                                                         enumerate(tok_lengths_batch[b])] for item in sublist]
+                    padded_char_batch[b, char_indices] = char_batch[b][:char_lens[b]]
+
+                num_sentences_batch = np.sum(seq_len_batch != 0, axis=1)
+
+                # print(seq_len_batch)
+                # print(num_sentences_batch)
+                pad_width = 0
+
+                # create masks for each example based on sequence lengths
+                mask_batch = np.zeros((batch_size, batch_seq_len))
+                for i, seq_lens in enumerate(seq_len_batch):
+                    start = pad_width
+                    for seq_len in seq_lens:
+                        mask_batch[i, start:start + seq_len] = 1
+                        start += seq_len #+ (2 if FLAGS.start_end else 1) * pad_width
+                examples += batch_size
+
+                # print(batch_seq_len)
+                # print(tok_lengths_batch.shape)
+                # print(tok_lengths_batch)
+                # print(np.reshape(tok_lengths_batch, (batch_size*batch_seq_len)))
+                # print(padded_char_batch.shape)
+                # print(np.reshape(padded_char_batch, (batch_size*batch_seq_len, max_char_len)))
+
+                # print("input_x1", token_batch)
+                # print("input_x1_sample_pad", input_x1_sample_pad)
+
+                # apply word dropout
+                # create word dropout mask
+                word_probs = np.random.random(token_batch.shape)
+                drop_indices = np.where((word_probs > FLAGS.word_dropout)) #& (token_batch != vocab_str_id_map["<PAD>"]))
+                token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
+
+                # TODO what is going on here
+                # # sample padding
+                # # sample an amount of padding to add for each sentence
+                #
+                # max_sampled_seq_len = batch_seq_len + (np.max(num_sentences_batch) + 1) * FLAGS.max_additional_pad
+                # input_x1_sample_pad = np.empty((batch_size, max_sampled_seq_len))
+                # input_x2_sample_pad = np.empty((batch_size, max_sampled_seq_len))
+                # # input_x3_sample_pad = np.empty((batch_size, max_sampled_seq_len))
+                # input_mask_sample_pad = np.zeros((batch_size, max_sampled_seq_len))
+                # if FLAGS.regularize_pad_penalty != 0.0:
+                #     input_x1_sample_pad.fill(vocab_str_id_map["<PAD>"])
+                #     input_x2_sample_pad.fill(shape_str_id_map["<PAD>"])
+                #     # input_x3_sample_pad.fill(char_str_id_map["<PAD>"])
+                #
+                #     for i, seq_lens in enumerate(seq_len_batch):
+                #         pad_start = sample_pad_size()
+                #         actual_start = pad_width
+                #         for seq_len in seq_lens:
+                #             input_x1_sample_pad[i, pad_start:pad_start + seq_len] = token_batch[i,
+                #                                                                     actual_start:actual_start + seq_len]
+                #             input_x2_sample_pad[i, pad_start:pad_start + seq_len] = shape_batch[i,
+                #                                                                     actual_start:actual_start + seq_len]
+                #             # input_x3_sample_pad[i, pad_start:pad_start+seq_len] = char_batch[i, actual_start:actual_start+seq_len]
+                #             input_mask_sample_pad[i, pad_start:pad_start + seq_len] = 1
+                #             sampled_pad_size = sample_pad_size()
+                #             pad_start += seq_len + sampled_pad_size
+                #             actual_start += seq_len + (2 if FLAGS.start_end else 1) * pad_width
+
+                char_embedding_feeds = {} if FLAGS.char_dim == 0 else {
+                    char_embedding_model.input_chars: padded_char_batch,
+                    char_embedding_model.batch_size: batch_size,
+                    char_embedding_model.max_seq_len: batch_seq_len,
+                    char_embedding_model.token_lengths: tok_lengths_batch,
+                    char_embedding_model.max_tok_len: max_char_len
+                }
+
+                lstm_feed = {
+                    model.input_x1: token_batch,
+                    model.input_x2: shape_batch,
+                    model.input_y: label_batch,
+                    model.input_mask: mask_batch,
+                    model.sequence_lengths: seq_len_batch,
+                    model.max_seq_len: batch_seq_len,
+                    model.batch_size: batch_size,
+                    model.hidden_dropout_keep_prob: FLAGS.hidden_dropout,
+                    model.middle_dropout_keep_prob: FLAGS.middle_dropout,
+                    model.input_dropout_keep_prob: FLAGS.input_dropout,
+                    model.l2_penalty: FLAGS.l2,
+                    model.drop_penalty: FLAGS.regularize_drop_penalty
+                }
+
+
+                geometric_feats_feeds = {
+                    model.widths: widths_batch,
+                    model.heights: heights_batch,
+                    model.wh_ratios: wh_ratios_batch,
+                    model.x_coords: x_coords_batch,
+                    model.y_coords: y_coords_batch,
+                    model.pages: page_ids_batch,
+                    model.lines: line_ids_batch,
+                    model.zones: zone_ids_batch,
+                }
+
+                lstm_feed.update(char_embedding_feeds)
+
+                if FLAGS.use_geometric_feats:
+                    lstm_feed.update(geometric_feats_feeds)
+
+                print("Running training op:")
+                sys.stdout.flush()
+                _, loss = sess.run([train_op, model.loss], feed_dict=lstm_feed)
+
+                print("Current training loss: %f" % loss)
+                sys.stdout.flush()
+
+                epoch_loss += loss
+                train_batcher._step += 1
+
             # join threads
             sv.coord.request_stop()
             sv.coord.join(threads)
