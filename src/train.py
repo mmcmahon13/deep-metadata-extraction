@@ -25,8 +25,9 @@ tf.app.flags.DEFINE_integer('embed_dim', 200, 'dimensions of the words embedding
 tf.app.flags.DEFINE_integer('char_dim', 0, 'character embedding dimension') # set to 25?
 tf.app.flags.DEFINE_integer('char_tok_dim', 0, 'character token embedding dimension')
 tf.app.flags.DEFINE_string('char_model', 'lstm', 'character embedding model (lstm, cnn)')
-
 tf.app.flags.DEFINE_integer('shape_dim', 5, 'shape embedding dimension')
+
+# TODO: should we be embedding other features?
 
 # lstm layer dimensions
 tf.app.flags.DEFINE_integer('lstm_dim', 2048, 'lstm internal dimension')
@@ -133,6 +134,7 @@ def get_trainable_params():
     for variable in tf.trainable_variables():
         # shape is an array of tf.Dimension
         shape = variable.get_shape()
+        # print(variable.name, shape)
         variable_parametes = 1
         for dim in shape:
             variable_parametes *= dim.value
@@ -168,8 +170,8 @@ def evaluate(sess, model, char_embedding_model, eval_batches, extra_text=""):
             char_embedding_model.input_dropout_keep_prob: FLAGS.char_input_dropout
         }
 
-        print(eval_height_batch.get_shape())
-        sys.stdout.flush()
+        # print(eval_height_batch.get_shape())
+        # sys.stdout.flush()
 
         # todo need to reshape these to add a third dimension
         basic_feeds = {
@@ -392,6 +394,7 @@ def train():
             training_iteration = 0
             speed_num = 0.0
             speed_denom = 0.0
+            total_iterations = 0
             # todo we might want this to be false for finetuning or something?
             update_context = True
             while not sv.should_stop() and training_iteration < FLAGS.max_epochs and not (FLAGS.until_convergence and converged):
@@ -426,15 +429,15 @@ def train():
                 print("shape batch shape: ", shape_batch.shape)
                 print("char batch shape: ", char_batch.shape)
                 print("seq_len batch shape: ", seq_len_batch.shape)
-                # print("tok_len batch shape: ", tok_lengths_batch.shape)
-                # print("widths_batch shape: ", widths_batch.shape)
-                # print("heights_batch shape: ", heights_batch.shape)
-                # print("ratios_batch shape: ", wh_ratios_batch.shape)
-                # print("x_coords shape: ", x_coords_batch.shape)
-                # print("y_coords shape: ", y_coords_batch.shape)
-                # print("pages shape: ", page_ids_batch.shape)
-                # print("lines shape: ", line_ids_batch.shape)
-                # print("zones shape: ", zone_ids_batch.shape)
+                print("tok_len batch shape: ", tok_lengths_batch.shape)
+                print("widths_batch shape: ", widths_batch.shape)
+                print("heights_batch shape: ", heights_batch.shape)
+                print("ratios_batch shape: ", wh_ratios_batch.shape)
+                print("x_coords shape: ", x_coords_batch.shape)
+                print("y_coords shape: ", y_coords_batch.shape)
+                print("pages shape: ", page_ids_batch.shape)
+                print("lines shape: ", line_ids_batch.shape)
+                print("zones shape: ", zone_ids_batch.shape)
                 #
                 # print("Max sequence length in batch: %d" % np.max(seq_len_batch))
                 sys.stdout.flush()
@@ -453,7 +456,7 @@ def train():
                 # make mask out of seq lens
                 batch_size, batch_seq_len = token_batch.shape
 
-                print(batch_seq_len)
+                # print(batch_seq_len)
 
 
                 # pad the character batch?
@@ -467,7 +470,7 @@ def train():
 
                 num_sentences_batch = np.sum(seq_len_batch != 0, axis=1)
 
-                print(seq_len_batch)
+                # print(seq_len_batch)
                 # print(num_sentences_batch)
                 pad_width = 0
 
@@ -575,10 +578,19 @@ def train():
                 epoch_loss += loss
                 train_batcher._step += 1
 
+                total_iterations += training_iteration
+
             # join threads
             sv.coord.request_stop()
             sv.coord.join(threads)
             sess.close()
+
+            # print time information
+            total_time = time.time() - training_start_time
+            print("Training time: %d minutes, %d iterations (%3.2f minutes/iteration)" % (
+            total_time / 60, total_iterations, total_time / (60 * total_iterations)))
+            # print("Avg training speed: %f examples/second" % (train_speed))
+            # print("Best dev F1: %2.2f" % (best_score * 100))
 
 def main(argv):
     print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))
@@ -588,4 +600,5 @@ def main(argv):
 if __name__ == '__main__':
     tf.app.run()
 
-# srun python train.py --train_dir $HOME/data/pruned_pmc/train --dev_dir $HOME/data/pruned_pmc/dev --embeddings $HOME/data/embeddings/PMC-w2v.txt--train_eval
+# srun python train.py --train_dir $HOME/data/pruned_pmc/train --dev_dir $HOME/data/pruned_pmc/dev
+    # --embeddings $HOME/data/embeddings/PMC-w2v.txt --train_eval
