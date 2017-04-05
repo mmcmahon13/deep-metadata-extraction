@@ -175,8 +175,8 @@ class BiLSTM(object):
                 fwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
                 bwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
                 lstm_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwd_cell, cell_bw=bwd_cell, dtype=tf.float32,
-                                                                 # inputs=input_feats_expanded_drop,
-                                                                 inputs = input_feats,
+                                                                 inputs=input_feats_expanded_drop,
+                                                                 # inputs = input_feats,
                                                                  parallel_iterations=50,
                                                                  sequence_length=self.flat_sequence_lengths)
                 hidden_outputs = tf.concat(2, lstm_outputs)
