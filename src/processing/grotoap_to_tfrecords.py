@@ -13,9 +13,6 @@ import tensorflow as tf
 # from src.models.batch_utils import *
 from parse_docs_sax import *
 
-# TODO we may need to arbitrarily split the pages into smaller sequences
-# the training op is taking too long and using too much memory
-
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'export tf protos')
 tf.app.flags.DEFINE_string('load_vocab', '', 'directory containing embedding vocab files to load')
@@ -26,6 +23,7 @@ tf.app.flags.DEFINE_integer('num_threads', 1, 'max number of threads to use for 
 # tf.app.flags.DEFINE_boolean('lowercase', False, 'whether to lowercase')
 tf.app.flags.DEFINE_boolean('debug', False, 'print debugging output')
 tf.app.flags.DEFINE_boolean('bilou', False, 'encode the word labels in BILOU format')
+tf.app.flags.DEFINE_integer('seq_len', 30, 'maximum sequence length')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -106,40 +104,12 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     writer.write(example.SerializeToString())
 
 
-def make_example(writer, page, update_vocab, update_chars,
-                 label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map):
-    '''
-    given a page from a document, make an example out of it (e.g. serialize it into a sequence of labeled word features)
-    :param writer:
-        the TFRecord writer
-    :param page:
-        a document page to make an example from
-        dict mapping integers to characters
-    :param update_vocab:
-        whether or not to update the vocabulary with new words we find
-    :param update_chars:
-        whether or not to update the char map with new chars we find
-    :return:
-    '''
-
-    # count how many words we encounter that fall outside of our embeddings vocab
+def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
+                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map):
     oov_count = 0
-
-    # get all the words on the page, as well as their containing line and zone ids
-    word_tups = []
-    for zone in page.zones:
-        for line in zone.lines:
-            for word in line.words:
-                word_tups.append((word, page.id, zone.id, line.id))
-
-    # TODO split at random intervals?
-
-    if FLAGS.debug:
-        print("words in page: ", len(word_tups))
-
     # ignore padding for now and just let the batcher handle variable length sequences?
     max_len_with_pad = len(word_tups)
-    sum_word_len = sum(map(len, [word.text for (word,_,_,_) in word_tups]))
+    sum_word_len = sum(map(len, [word.text for (word, _, _, _) in word_tups]))
 
     ## for each sequence, keep track of the following word features:
     # vector of token ids
@@ -205,7 +175,7 @@ def make_example(writer, page, update_vocab, update_chars,
         height = word.height()
         width = word.width()
         if height != 0:
-            wh_ratio = width/height
+            wh_ratio = width / height
         else:
             wh_ratio = 0
         (x, y) = word.centerpoint()
@@ -229,7 +199,8 @@ def make_example(writer, page, update_vocab, update_chars,
         tokens[i] = token_map.get(token_normalized, token_map[OOV_STR])
         shapes[i] = shape_map[token_shape]
         # update char features
-        chars[char_start:char_start+tok_lens[-1]] = [char_map.get(char, char_map[OOV_STR]) for char in token_normalized]
+        chars[char_start:char_start + tok_lens[-1]] = [char_map.get(char, char_map[OOV_STR]) for char in
+                                                       token_normalized]
         # print(chars)
         char_start += tok_lens[-1]
         labels.append(label_bilou)
@@ -244,6 +215,8 @@ def make_example(writer, page, update_vocab, update_chars,
         x_coords[i] = x
         y_coords[i] = y
 
+    # todo we shouldn't do binning here when we're splitting up the page,
+    # todo we should do it at train time when we know the max vals for the page?
     # bin the x and y coordinates
     x_bins = np.linspace(0, x_coords.max(), num=4)
     x_coords = np.digitize(x_coords, x_bins)
@@ -275,7 +248,7 @@ def make_example(writer, page, update_vocab, update_chars,
         print("lines ", lines)
         print("zones ", zones)
 
-    print("serializing page ", page_id)
+    print("serializing sequence ", page_id)
     serialize_example(writer,
                       intmapped_labels,
                       tokens,
@@ -291,13 +264,55 @@ def make_example(writer, page, update_vocab, update_chars,
                       pages,
                       lines,
                       zones)
+    return oov_count
+
+def make_example(writer, page, update_vocab, update_chars,
+                 label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map):
+    '''
+    given a page from a document, make an example out of it (e.g. serialize it into a sequence of labeled word features)
+    :param writer:
+        the TFRecord writer
+    :param page:
+        a document page to make an example from
+        dict mapping integers to characters
+    :param update_vocab:
+        whether or not to update the vocabulary with new words we find
+    :param update_chars:
+        whether or not to update the char map with new chars we find
+    :return:
+    '''
+
+    # count how many words we encounter that fall outside of our embeddings vocab
+    oov_count = 0
+
+    # get all the words on the page, as well as their containing line and zone ids
+    word_tups = []
+    total_words = 0
+    for zone in page.zones:
+        for line in zone.lines:
+            for word in line.words:
+                # create sequences containing some number of words (chop page up arbitrarily)?
+                if len(word_tups) < FLAGS.seq_len:
+                    word_tups.append((word, page.id, zone.id, line.id))
+                else:
+                    oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
+                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map)
+                    word_tups = [(word, page.id, zone.id, line.id)]
+                total_words += 1
+
+    # TODO split at random intervals?
+
+    # if FLAGS.debug:
+    #     print("words in page: ", len(word_tups))
+
+
 
     print(len(label_map))
     print(len(token_map))
     print(len(char_map))
     print(len(shape_map))
 
-    return len(word_tups), oov_count, 1
+    return total_words, oov_count, 1
 
 
 def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, label_int_str_map,
