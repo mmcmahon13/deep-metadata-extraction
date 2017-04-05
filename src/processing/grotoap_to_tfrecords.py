@@ -132,6 +132,8 @@ def make_example(writer, page, update_vocab, update_chars,
             for word in line.words:
                 word_tups.append((word, page.id, zone.id, line.id))
 
+    # TODO split at random intervals?
+
     if FLAGS.debug:
         print("words in page: ", len(word_tups))
 
