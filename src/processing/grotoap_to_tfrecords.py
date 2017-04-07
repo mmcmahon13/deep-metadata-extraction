@@ -24,6 +24,8 @@ tf.app.flags.DEFINE_integer('num_threads', 1, 'max number of threads to use for 
 tf.app.flags.DEFINE_boolean('debug', False, 'print debugging output')
 tf.app.flags.DEFINE_boolean('bilou', False, 'encode the word labels in BILOU format')
 tf.app.flags.DEFINE_integer('seq_len', 30, 'maximum sequence length')
+tf.app.flags.DEFINE_integer('x_bins', 4, 'number of bins to use for x coordinate features')
+tf.app.flags.DEFINE_integer('y_bins', 4, 'number of bins to use for y coordinate features')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -32,9 +34,6 @@ OOV_STR = "<OOV>"
 
 
 embeddings_counts = {}
-
-def generate_bio(label, last_label):
-    pass
 
 def match_lexicons(token):
     pass
@@ -105,7 +104,8 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
 
 
 def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
-                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map):
+                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y,
+                     min_x, min_y):
     oov_count = 0
     # ignore padding for now and just let the batcher handle variable length sequences?
     max_len_with_pad = len(word_tups)
@@ -208,6 +208,7 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         # update geometric features
         widths[i] = width
         heights[i] = height
+        # todo should we also bin widths, heights, wh ratios, etc.?
         wh_ratios[i] = wh_ratio
         pages[i] = page_id
         lines[i] = line_id
@@ -215,12 +216,10 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         x_coords[i] = x
         y_coords[i] = y
 
-    # todo we shouldn't do binning here when we're splitting up the page,
-    # todo we should do it at train time when we know the max vals for the page?
-    # bin the x and y coordinates
-    x_bins = np.linspace(0, x_coords.max(), num=4)
+    # bin the x and y coordinates (4 bins from 0 to max x, y on page)
+    x_bins = np.linspace(min_x, max_x, num=FLAGS.x_bins)
     x_coords = np.digitize(x_coords, x_bins)
-    y_bins = np.linspace(0, y_coords.max(), num=4)
+    y_bins = np.linspace(min_y, max_y, num=FLAGS.y_bins)
     y_coords = np.digitize(y_coords, y_bins)
 
     # move this intmapping elsewhere?
@@ -285,6 +284,24 @@ def make_example(writer, page, update_vocab, update_chars,
     # count how many words we encounter that fall outside of our embeddings vocab
     oov_count = 0
 
+    # run through all words in a page once to get max/min values for features we want to bin
+    max_x = 0
+    max_y = 0
+    min_x = 100000
+    min_y = 100000
+    for zone in page.zones:
+        for line in zone.lines:
+            for word in line.words:
+                (x,y) = word.centerpoint()
+                if x > max_x:
+                    max_x = x
+                elif x < min_x:
+                    min_x = x
+                if y > max_y:
+                    max_y = y
+                elif y < min_y:
+                    min_y = y
+
     # get all the words on the page, as well as their containing line and zone ids
     word_tups = []
     total_words = 0
@@ -296,21 +313,15 @@ def make_example(writer, page, update_vocab, update_chars,
                     word_tups.append((word, page.id, zone.id, line.id))
                 else:
                     oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
-                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map)
+                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y, min_x, min_y)
                     word_tups = [(word, page.id, zone.id, line.id)]
                 total_words += 1
 
-    # TODO split at random intervals?
-
-    # if FLAGS.debug:
-    #     print("words in page: ", len(word_tups))
-
-
-
-    print(len(label_map))
-    print(len(token_map))
-    print(len(char_map))
-    print(len(shape_map))
+    if FLAGS.debug:
+        print(len(label_map))
+        print(len(token_map))
+        print(len(char_map))
+        print(len(shape_map))
 
     return total_words, oov_count, 1
 
