@@ -69,13 +69,15 @@ tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty d
 
 FLAGS = tf.app.flags.FLAGS
 
-def run_epoch():
-    pass
-
 def train():
-    # load preprocessed maps and embeddings
+    # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
     shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps()
+
+    # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
+    type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
+
+    # load the embeddings
     embeddings = load_embeddings(vocab_str_id_map)
 
     labels_size = len(labels_str_id_map)
@@ -211,10 +213,14 @@ def train():
                     print("iteration %d" % training_iteration)
                     sys.stdout.flush()
 
-                    # if FLAGS.train_eval:
-                    #     run_evaluation(train_batches, update_context, "TRAIN (iteration %d)" % training_iteration)
-                    # print()
-                    # f1_micro, precision = run_evaluation(dev_batches, update_context,
+                    if FLAGS.train_eval:
+                        print(len(train_batches))
+                        print(len(train_batches[0]))
+                        # (sess, model, char_embedding_model, eval_batches, extra_text="")
+                        evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
+                                                  labels_id_str_map, "TRAIN (iteration %d)" % training_iteration)
+                    print()
+                    # f1_micro, precision = evaluation.run_evaluation(dev_batches, update_context,
                     #                                      "TEST (iteration %d)" % training_iteration)
                     print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
 
@@ -395,6 +401,8 @@ def train():
             sv.coord.request_stop()
             sv.coord.join(threads)
             sess.close()
+
+            total_iterations = training_iteration
 
             # print time information
             total_time = time.time() - training_start_time

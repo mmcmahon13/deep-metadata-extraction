@@ -11,6 +11,36 @@ FLAGS = tf.app.flags.FLAGS
 def sample_pad_size():
     return np.random.randint(1, FLAGS.max_additional_pad) if FLAGS.max_additional_pad > 0 else 0
 
+def create_type_maps(labels_str_id_map):
+    type_int_int_map = {}
+    bilou_int_int_map = {}
+    bilou_set = {}
+    type_set = {}
+    outside_set = ["O", "<PAD>", "<S>", "</S>", "<ZERO>"]
+
+    # create sets of both type and bilou-encoded labels
+    for label, id in labels_str_id_map.items():
+        label_type = label if label in outside_set else label[2:]
+        label_bilou = label[0]
+        if label_type not in type_set:
+            type_set[label_type] = len(type_set)
+        if label_bilou not in bilou_set:
+            bilou_set[label_bilou] = len(bilou_set)
+        type_int_int_map[id] = type_set[label_type]
+        bilou_int_int_map[id] = bilou_set[label_bilou]
+
+    # manually add O key if it's not in type_set already
+    if not type_set.has_key("O"):
+        type_set["O"] = len(type_set)
+
+    type_int_str_map = {a: b for b, a in type_set.items()}
+    bilou_int_str_map = {a: b for b, a in bilou_set.items()}
+    num_types = len(type_set)
+    num_bilou = len(bilou_set)
+    print(type_set)
+
+    return type_int_int_map, bilou_int_int_map, type_set, bilou_set
+
 # load the maps created during preprocessing
 def load_intmaps():
     print("Loading vocabulary maps...")
@@ -99,8 +129,8 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
             dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch, \
             dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch, dev_y_coord_batch, \
             dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch = dev_batch
-            print("batch length: %d" % len(dev_seq_len_batch))
-            sys.stdout.flush()
+            # print("batch length: %d" % len(dev_seq_len_batch))
+            # sys.stdout.flush()
             num_dev_examples += len(dev_seq_len_batch)
             mask_batch = np.zeros(dev_token_batch.shape)
             for i, seq_lens in enumerate(dev_seq_len_batch):
@@ -135,14 +165,14 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
         while not done:
             try:
                 train_batch = sess.run(train_eval_batcher.next_batch_op)
-                print("loaded train batch %d" % num_batches)
+                # print("loaded train batch %d" % num_batches)
                 sys.stdout.flush()
                 train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                 train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
                 train_page_id_batch, train_line_id_batch, train_zone_id_batch = train_batch
                 mask_batch = np.zeros(train_token_batch.shape)
-                print("batch length: %d" % len(train_seq_len_batch))
-                sys.stdout.flush()
+                # print("batch length: %d" % len(train_seq_len_batch))
+                # sys.stdout.flush()
                 num_train_examples += len(train_seq_len_batch)
                 for i, seq_lens in enumerate(train_seq_len_batch):
                     start = pad_width
@@ -152,7 +182,7 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                         start += seq_len
                 train_batches.append((train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                                         train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
-                                        train_page_id_batch, train_line_id_batch, train_zone_id_batch))
+                                        train_page_id_batch, train_line_id_batch, train_zone_id_batch, mask_batch))
                 num_batches += 1
             except Exception as e:
                 # print("Error loading train batches")
