@@ -42,22 +42,22 @@ def create_type_maps(labels_str_id_map):
     return type_int_int_map, bilou_int_int_map, type_set, bilou_set
 
 # load the maps created during preprocessing
-def load_intmaps():
+def load_intmaps(dir):
     print("Loading vocabulary maps...")
     sys.stdout.flush()
-    with open(FLAGS.train_dir + '/label.txt', 'r') as f:
+    with open(dir + '/label.txt', 'r') as f:
         labels_str_id_map = {l.split('\t')[0]: int(l.split('\t')[1].strip()) for l in f.readlines()}
         labels_id_str_map = {i: s for s, i in labels_str_id_map.items()}
         labels_size = len(labels_id_str_map)
-    with open(FLAGS.train_dir + '/token.txt', 'r') as f:
+    with open(dir + '/token.txt', 'r') as f:
         vocab_str_id_map = {l.split('\t')[0]: int(l.split('\t')[1].strip()) for l in f.readlines()}
         vocab_id_str_map = {i: s for s, i in vocab_str_id_map.items()}
         vocab_size = len(vocab_id_str_map)
-    with open(FLAGS.train_dir + '/shape.txt', 'r') as f:
+    with open(dir + '/shape.txt', 'r') as f:
         shape_str_id_map = {l.split('\t')[0]: int(l.split('\t')[1].strip()) for l in f.readlines()}
         shape_id_str_map = {i: s for s, i in shape_str_id_map.items()}
         shape_domain_size = len(shape_id_str_map)
-    with open(FLAGS.train_dir + '/char.txt', 'r') as f:
+    with open(dir + '/char.txt', 'r') as f:
         char_str_id_map = {l.split('\t')[0]: int(l.split('\t')[1].strip()) for l in f.readlines()}
         char_id_str_map = {i: s for s, i in char_str_id_map.items()}
         char_domain_size = len(char_id_str_map)

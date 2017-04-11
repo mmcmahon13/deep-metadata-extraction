@@ -19,6 +19,10 @@ tf.app.flags.DEFINE_string('train_dir', '', 'directory containing preprocessed t
 tf.app.flags.DEFINE_string('dev_dir', '', 'directory containing preprocessed dev data')
 tf.app.flags.DEFINE_string('test_dir', '', 'directory containing preprocessed test data')
 
+# directories for loading pre-trained models/checkpoints
+tf.app.flags.DEFINE_string('model_dir', '', 'save model to this dir (if empty do not save)')
+tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty do not load)')
+
 # embeddings and dimensions
 tf.app.flags.DEFINE_string('embeddings', '', 'path to embeddings file')
 tf.app.flags.DEFINE_integer('embed_dim', 200, 'dimensions of the words embeddings')
@@ -40,7 +44,7 @@ tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accura
 tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training examples into memory')
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 tf.app.flags.DEFINE_integer('max_epochs', 100, 'train for this many epochs')
-tf.app.flags.DEFINE_boolean('until_convergence', False, 'whether to run until convergence')
+tf.app.flags.DEFINE_boolean('until_convergence', True, 'whether to run until convergence')
 tf.app.flags.DEFINE_boolean('use_geometric_feats', False, 'whether to use the geometric features')
 
 # hyperparams
@@ -63,16 +67,12 @@ tf.app.flags.DEFINE_float('word_dropout', 1.0, 'whole-word (-> oov) dropout rate
 # penalties
 tf.app.flags.DEFINE_float('regularize_drop_penalty', 0.0, 'penalty for dropout regularization')
 
-# saving and loading models
-tf.app.flags.DEFINE_string('model_dir', '', 'save model to this dir (if empty do not save)')
-tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty do not load)')
-
 FLAGS = tf.app.flags.FLAGS
 
 def train():
     # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
-    shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps()
+    shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.dev_dir)
 
     # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
     type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
@@ -203,6 +203,9 @@ def train():
             speed_num = 0.0
             speed_denom = 0.0
             total_iterations = 0
+            max_lower = 6
+            min_iters = 20
+            best_score = 0
             # todo we might want this to be false for finetuning or something?
             update_context = True
             update_frontend = True
@@ -214,35 +217,38 @@ def train():
                     sys.stdout.flush()
 
                     if FLAGS.train_eval:
-                        print(len(train_batches))
-                        print(len(train_batches[0]))
+                        # print(len(train_batches))
+                        # print(len(train_batches[0]))
                         # (sess, model, char_embedding_model, eval_batches, extra_text="")
                         evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
                                                   labels_id_str_map, "TRAIN (iteration %d)" % training_iteration)
+                        print()
+                    weighted_f1, accuracy = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
+                                              labels_id_str_map, "TEST (iteration %d)" % training_iteration)
                     print()
                     # f1_micro, precision = evaluation.run_evaluation(dev_batches, update_context,
                     #                                      "TEST (iteration %d)" % training_iteration)
                     print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
 
                     # todo keep track of running best / convergence heuristic once i implement the eval
-                    # if f1_micro > best_score:
-                    #     best_score = f1_micro
-                    #     num_lower = 0
-                    #     if FLAGS.model_dir != '':
-                    #         if update_frontend:
-                    #             save_path = frontend_saver.save(sess, FLAGS.model_dir + "-frontend.tf")
-                    #             print("Serialized model: %s" % save_path)
-                    #         elif update_context and not update_frontend:
-                    #             save_path = context_saver.save(sess, FLAGS.model_dir + "-context.tf")
-                    #             print("Serialized model: %s" % save_path)
-                    #         else:
-                    #             save_path = saver.save(sess, FLAGS.model_dir + ".tf")
-                    #             print("Serialized model: %s" % save_path)
-                    # else:
-                    #     num_lower += 1
-                    # # if we've done the minimum number of iterations, check to see if the best score has converged
-                    # if num_lower > max_lower and training_iteration > min_iters:
-                    #     converged = True
+                    if weighted_f1 > best_score:
+                        best_score = weighted_f1
+                        num_lower = 0
+                        if FLAGS.model_dir != '':
+                            if update_frontend:
+                                save_path = frontend_saver.save(sess, FLAGS.model_dir + "-frontend.tf")
+                                print("Serialized model: %s" % save_path)
+                            # elif update_context and not update_frontend:
+                            #     save_path = context_saver.save(sess, FLAGS.model_dir + "-context.tf")
+                            #     print("Serialized model: %s" % save_path)
+                            # else:
+                            #     save_path = saver.save(sess, FLAGS.model_dir + ".tf")
+                            #     print("Serialized model: %s" % save_path)
+                    else:
+                        num_lower += 1
+                    # if we've done the minimum number of iterations, check to see if the best score has converged
+                    if num_lower > max_lower and training_iteration > min_iters:
+                        converged = True
                     #
                     # # see if we have a better precision and save the model if so
                     # if precision > best_precision:

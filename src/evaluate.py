@@ -15,7 +15,6 @@ import tf_utils
 FLAGS = tf.app.flags.FLAGS
 
 # run the model on dev/test data and make predictions
-# TODO untested
 def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_id_map, labels_id_str_map, extra_text=""):
     print(extra_text)
     sys.stdout.flush()
@@ -91,7 +90,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         # print(eval_label_batch.shape)
         # sys.stdout.flush()
 
-    print("starting batch evaluation")
+    # print("starting batch evaluation")
     flat_preds = np.concatenate([p.flatten() for p in predictions])
     flat_labels = np.concatenate([l.flatten() for l in labels])
 
@@ -110,6 +109,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
     tag_level_metrics = compute_f1_score(flat_labels, flat_preds, tag_set)
     accuracy = sum(flat_preds == flat_labels) * 1. / len(flat_labels)
 
+    # TODO also print out micro/macro?
     w_f1 = f1_score(flat_labels, flat_preds, average='weighted')
     print('Weighted F1: %f' % w_f1)
     print('Accuracy: %f' % accuracy)
@@ -131,7 +131,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         # #                          extra_text="Boundary evaluation %s: " % extra_text)
         # # print("done with batch evaluation")
         # return f1_micro, precision
-    return None, None
+    return w_f1, accuracy
 
 def compute_f1_score(ytrue, ypred, tag_set):
     # this is direct from the Meta example script Shankar sent
