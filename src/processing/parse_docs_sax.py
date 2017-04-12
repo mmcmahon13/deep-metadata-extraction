@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
+# from fuzzywuzzy import fuzz
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
 
@@ -166,9 +168,94 @@ def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', '
     elif field_len > 0:
         words[-1].label = words[-1].label.replace('B-', 'U-')
 
+def match_dictionaries(doc, place_set, department_set, university_set, person_set, matching='exact'):
+    words = doc.words()
+
+    places = ' '.join(place_set)
+    depts= ' '.join(department_set)
+    unis = ' '.join(university_set)
+    people = ' '.join(person_set)
+
+    # check all unigrams
+    for word in words:
+        tok = word.text.lower().strip()
+        # place_score = fuzz.token_set_ratio(tok, places) / 100
+        # dept_score = fuzz.token_set_ratio(tok, depts) / 100
+        # uni_score = fuzz.token_set_ratio(tok, unis) / 100
+        # person_score = fuzz.token_set_ratio(tok, people) / 100
+        # print("%s: place: %f department: %f university: %f person: %f" % (tok, place_score, dept_score, uni_score, person_score))
+        if matching == 'exact':
+            if tok in place_set:
+                word.place_score = 1
+            else:
+                word.place_score = 0
+            if tok in department_set:
+                word.department_score = 1
+            else:
+                word.department_score = 0
+            if tok in university_set:
+                word.university_score = 1
+            else:
+                word.university_score = 0
+            if tok in person_set:
+                word.person_score = 1
+            else:
+                word.person_score = 0
+
 # TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does
-def match_dictionaries():
-    pass
+def load_dictionaries():
+    # place dictionaries
+    place_set = set([])
+    with open('dicts' + os.sep + 'city_full.txt') as f:
+        for word in f:
+            place_set.add(word.strip())
+    with open('dicts' + os.sep + 'country_full.txt') as f:
+        for word in f:
+            place_set.add(word.strip())
+    with open('dicts' + os.sep + 'region_full.txt') as f:
+        for word in f:
+            place_set.add(word.strip())
+
+    # department dictionaries
+    department_set = set([])
+    with open('dicts' + os.sep + 'department_full.txt') as f:
+        for word in f:
+            department_set.add(word.strip())
+    with open('dicts' + os.sep + 'department_keywords.txt') as f:
+        for word in f:
+            department_set.add(word.strip())
+    with open('dicts' + os.sep + 'faculty_full.txt') as f:
+        for word in f:
+            department_set.add(word.strip())
+    with open('dicts' + os.sep + 'faculty_keywords.txt') as f:
+        for word in f:
+            department_set.add(word.strip())
+
+    # university dictionaries
+    university_set = set([])
+    with open('dicts' + os.sep + 'university_full.txt') as f:
+        for word in f:
+            university_set.add(word.strip())
+    with open('dicts' + os.sep + 'university_keywords.txt') as f:
+        for word in f:
+            university_set.add(word.strip())
+
+    # person name dictionaries
+    person_set = set([])
+    with open('dicts' + os.sep + 'chinese_only.txt') as f:
+        for word in f:
+            person_set.add(word.strip())
+    with open('dicts' + os.sep + 'english_only.txt') as f:
+        for word in f:
+            person_set.add(word.strip())
+    with open('dicts' + os.sep + 'frequent_last_names.txt') as f:
+        for word in f:
+            person_set.add(word.strip())
+    with open('dicts' + os.sep + 'shared.txt') as f:
+        for word in f:
+            person_set.add(word.strip())
+
+    return place_set, department_set, university_set, person_set
 
 def parse_doc(doc_path):
     parser = make_parser()
@@ -185,14 +272,20 @@ def parse_doc(doc_path):
 
 def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml')
-    # print(doc.getFullText())
-    # print()
-    print(doc.toString())
-    words_to_bilou(doc)
-    print("\nWORDS\n")
+    place_set, department_set, university_set, person_set = load_dictionaries()
+    match_dictionaries(doc, place_set, department_set, university_set, person_set)
     words = doc.words()
     for word in words:
-        print('%s , %s' %(word.text, word.label))
+        print('%s , %d, %d, %d, %d' %(word.text, word.place_score, word.department_score, word.university_score, word.person_score))
+
+    # print(doc.getFullText())
+    # print()
+    # print(doc.toString())
+    # words_to_bilou(doc)
+    # print("\nWORDS\n")
+    # words = doc.words()
+    # for word in words:
+    #     print('%s , %s' %(word.text, word.label))
     # print("\nLINES\n")
     # lines = doc.lines()
     # print("\nZONES\n")

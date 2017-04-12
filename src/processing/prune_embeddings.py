@@ -72,5 +72,4 @@ if __name__ == '__main__':
     tf.app.run()
 
 
-# python prune_embeddings.py --embeddings /iesl/canvas/mmcmahon/embeddings/PMC-w2v.txt grotoap_dir
-# $DATA_DIR/grotoap_test/grotoap2/dataset --out_dir $DATA_DIR --out_file 'pruned_PMC.txt'
+# python prune_embeddings.py --embeddings /iesl/canvas/mmcmahon/embeddings/PMC-w2v.txt --grotoap_dir $DATA_DIR/grotoap_test/grotoap2/dataset --out_dir $DATA_DIR --out_file 'pruned_PMC.txt'

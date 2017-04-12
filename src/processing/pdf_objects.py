@@ -141,6 +141,11 @@ class Word(DocumentObject, BoundedDocumentObject):
         Representation of a word
         Words have labels (in our case, the same as enclosing lines) and bounding boxes
     """
+    def __init__(self):
+        self.place_score = None
+        self.department_score = None
+        self.university_score = None
+        self.person_score = None
 
     def shape(self):
         if all(c.isupper() for c in self.text):
@@ -151,6 +156,3 @@ class Word(DocumentObject, BoundedDocumentObject):
             return "aAa"
         else:
             return "a"
-
-    def __init__(self):
-        pass

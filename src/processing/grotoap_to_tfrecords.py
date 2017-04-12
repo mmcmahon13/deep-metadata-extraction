@@ -35,9 +35,6 @@ OOV_STR = "<OOV>"
 
 embeddings_counts = {}
 
-def match_lexicons(token):
-    pass
-
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
                       widths, heights, wh_ratios, x_coords, y_coords, pages, lines, zones):
     example = tf.train.SequenceExample()
@@ -336,8 +333,16 @@ def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, 
     try:
         print('Converting %s ' % in_file)
         doc = parse_doc(in_file)
+
+        # convert labels to BILOU
         if FLAGS.bilou:
             words_to_bilou(doc)
+
+        # check for dictionary matches if we want to
+        if FLAGS.use_lexicons:
+            place_set, department_set, university_set, person_set = load_dictionaries()
+            match_dictionaries(doc, place_set, department_set, university_set, person_set)
+
         # just start by trying first page only
         num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars,
                                                label_map, token_map, shape_map, char_map, label_int_str_map,
