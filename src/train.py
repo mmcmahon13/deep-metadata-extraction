@@ -6,6 +6,7 @@ import tensorflow as tf
 import numpy as np
 from models.batch_utils import SeqBatcher, Batcher
 from models.bilstm import BiLSTM
+from models.lstm import LSTM
 from models.bilstm_char import BiLSTMChar
 from models.cnn_char import CNNChar
 from train_utils import *
@@ -39,6 +40,7 @@ tf.app.flags.DEFINE_integer('shape_dim', 5, 'shape embedding dimension')
 tf.app.flags.DEFINE_integer('lstm_dim', 2048, 'lstm internal dimension')
 
 # training
+tf.app.flags.DEFINE_string('model', 'bilstm', 'which model to use [lstm, bilstm]')
 tf.app.flags.DEFINE_integer('batch_size', 50, 'batch size')
 tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accuracy')
 tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training examples into memory')
@@ -106,20 +108,36 @@ def train():
         char_embeddings = char_embedding_model.outputs if char_embedding_model is not None else None
 
         # create BiLSTM model
-        model = BiLSTM(
-            num_classes=labels_size,
-            vocab_size=vocab_size,
-            shape_domain_size=shape_domain_size,
-            char_domain_size=char_domain_size,
-            char_size=FLAGS.char_dim,
-            embedding_size=FLAGS.embed_dim,
-            shape_size=FLAGS.shape_dim,
-            nonlinearity=FLAGS.nonlinearity,
-            viterbi=False, #viterbi=FLAGS.viterbi,
-            hidden_dim=FLAGS.lstm_dim,
-            char_embeddings=char_embeddings,
-            embeddings=embeddings,
-            use_geometric_feats=FLAGS.use_geometric_feats)
+        if FLAGS.model == 'bilstm':
+            model = BiLSTM(
+                num_classes=labels_size,
+                vocab_size=vocab_size,
+                shape_domain_size=shape_domain_size,
+                char_domain_size=char_domain_size,
+                char_size=FLAGS.char_dim,
+                embedding_size=FLAGS.embed_dim,
+                shape_size=FLAGS.shape_dim,
+                nonlinearity=FLAGS.nonlinearity,
+                viterbi=False, #viterbi=FLAGS.viterbi,
+                hidden_dim=FLAGS.lstm_dim,
+                char_embeddings=char_embeddings,
+                embeddings=embeddings,
+                use_geometric_feats=FLAGS.use_geometric_feats)
+        elif FLAGS.model == 'lstm':
+            model = LSTM(
+                num_classes=labels_size,
+                vocab_size=vocab_size,
+                shape_domain_size=shape_domain_size,
+                char_domain_size=char_domain_size,
+                char_size=FLAGS.char_dim,
+                embedding_size=FLAGS.embed_dim,
+                shape_size=FLAGS.shape_dim,
+                nonlinearity=FLAGS.nonlinearity,
+                viterbi=False,  # viterbi=FLAGS.viterbi,
+                hidden_dim=FLAGS.lstm_dim,
+                char_embeddings=char_embeddings,
+                embeddings=embeddings,
+                use_geometric_feats=FLAGS.use_geometric_feats)
 
         # Define Training procedure
         global_step = tf.Variable(0, name='global_step', trainable=False)
