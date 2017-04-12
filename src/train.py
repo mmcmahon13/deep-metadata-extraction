@@ -64,6 +64,8 @@ tf.app.flags.DEFINE_float('input_dropout', 1.0, 'input layer (word embedding) dr
 tf.app.flags.DEFINE_float('middle_dropout', 1.0, 'middle layer dropout rate')
 tf.app.flags.DEFINE_float('word_dropout', 1.0, 'whole-word (-> oov) dropout rate')
 
+tf.app.flags.DEFINE_float('char_input_dropout', 1.0, 'dropout for character embeddings')
+
 # penalties
 tf.app.flags.DEFINE_float('regularize_drop_penalty', 0.0, 'penalty for dropout regularization')
 
@@ -72,7 +74,7 @@ FLAGS = tf.app.flags.FLAGS
 def train():
     # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
-    shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.dev_dir)
+    shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.train_dir)
 
     # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
     type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
