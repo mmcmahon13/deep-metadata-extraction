@@ -175,15 +175,15 @@ class LSTM(object):
                 # todo change this to a normal dynamic rnn with lsmt cell
                 fwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
                 bwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
-                lstm_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=fwd_cell, cell_bw=bwd_cell, dtype=tf.float32,
+                lstm_outputs, _ = tf.nn.dynamic_rnn(cell_fw=fwd_cell, dtype=tf.float32,
                                                                  inputs=input_feats_expanded_drop,
                                                                  # inputs = input_feats,
                                                                  parallel_iterations=50,
                                                                  sequence_length=self.flat_sequence_lengths)
-                hidden_outputs = tf.concat(2, lstm_outputs)
+                # hidden_outputs = tf.concat(2, lstm_outputs)
 
-            # concatenate the results of the forward and backward cells
-            h_concat_flat = tf.reshape(hidden_outputs, [-1, total_output_width])
+            # flatten the outputs of the lstm? is this necessary?
+            h_concat_flat = tf.reshape(lstm_outputs, [-1, total_output_width])
 
             # Add dropout
             with tf.name_scope("middle_dropout"):
