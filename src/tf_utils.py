@@ -10,6 +10,33 @@ eps = 1e-5
 Emma Strubell's utitlity functions (needed for her models)
 '''
 
+def gather_nd(params, indices, shape=None, name=None):
+    if shape is None:
+        shape = params.get_shape().as_list()
+    rank = len(shape)
+    flat_params = tf.reshape(params, [-1])
+    multipliers = [reduce(lambda x, y: x * y, shape[i + 1:], 1) for i in range(0, rank)]
+    indices_unpacked = tf.unpack(tf.cast(tf.transpose(indices, [rank - 1] + range(0, rank - 1), name), 'int32'))
+    flat_indices = sum([a * b for a, b in zip(multipliers, indices_unpacked)])
+    return tf.gather(flat_params, flat_indices, name=name)
+
+
+def repeat(tensor, reps):
+    flat_tensor = tf.reshape(tensor, [-1, 1])  # Convert to a len(yp) x 1 matrix.
+    repeated = tf.tile(flat_tensor, [1, reps])  # Create multiple columns.
+    repeated_flat = tf.reshape(repeated, [-1])  # Convert back to a vector.
+    return repeated_flat
+
+
+def last_relevant(output, length):
+    batch_size = tf.shape(output)[0]
+    max_length = tf.shape(output)[1]
+    out_size = int(output.get_shape()[2])
+    index = tf.range(0, batch_size) * max_length + (length - 1)
+    flat = tf.reshape(output, [-1, out_size])
+    relevant = tf.gather(flat, index)
+    return relevant
+
 def apply_nonlinearity(parameters, nonlinearity_type):
     if nonlinearity_type == "relu":
         return tf.nn.relu(parameters, name="relu")
