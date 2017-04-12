@@ -1,5 +1,5 @@
 # deep-metadata-extraction
-Models to identify and extract metadata from scientific literature; training and testing is done on the GROTOAP2 dataset. The models and training code are heavily derivative of Emma Strubell's cnn-spred code.
+Models to identify and extract metadata from scientific literature; training and testing is done on the GROTOAP2 dataset. The models and training code are heavily derivative of Emma Strubell's (@strubell) cnn-spred code.
 
 ## GROTOAP2 Preproccessing
 ### To extract the article plaintext from TrueViz XML documents, run the following:
