@@ -37,3 +37,20 @@ python grotoap_to_tfrecords.py
 ```
 
 The path provided to the `--grotoap_dir` argument should point to the GROTOAP directory contaning a series of numbered subdirectories (e.g. 00, 01, ..., 99), each of which contains TrueViz XML documents. Each of these subdirectories will be converted into a single TFRecord containing examples from those documents; these will be saved in `--out_dir`. A vocabulary will be created from the text or embeddings file provided to `--load_vocab` - during the preprocessing, all tokens not occuring in the vocab will be marked OOV (out of vocab). The `--debug` flag prints more information about the processing. `--seq_len` specifies how long the training sequences should be - each document page is segmented into sequences of this length. `--x_bins` and `--y_bins` specify how many bins to use for the x and y coordinate features of each word.
+
+To create train, dev, and test sets, run `grotoap_to_tfrecords.py` on specific train, test, and dev directories containing the desired GROTOAP2 subdirectories. For example, one could create the following train, test, and dev directories by moving the numbered subdirectories:
+
+grotoap/train
+--00
+--01
+--02
+...
+--10
+
+grotoap/test
+--11
+
+grotoap/dev
+--12
+
+To create a directory of training TFRecords for the train set, one might run `grotoap_to_tfrecords.py`, passing grotoap/train as the `--grotoap_dir` argument and grotoap-processed/train to the `--out_dir`. This would create a new directory grotoap-processed/train containing the TFRecord files *00.proto*, *01.proto*, etc. This directory may be passed as a training directory to the training code.
