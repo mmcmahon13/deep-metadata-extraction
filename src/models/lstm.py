@@ -168,14 +168,12 @@ class LSTM(object):
             # self.input_feats_expanded = tf.expand_dims(self.input_feats, 1)
             input_feats_expanded_drop = tf.nn.dropout(input_feats, input_dropout_keep_prob)
 
-            total_output_width = 2*self.hidden_dim
+            total_output_width = self.hidden_dim # 2*self.hidden_dim
 
             with tf.name_scope("lstm"):
                 # selected_col_embeddings = tf.nn.embedding_lookup(token_embeddings, self.token_batch)
-                # todo change this to a normal dynamic rnn with lsmt cell
                 fwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
-                bwd_cell = tf.nn.rnn_cell.BasicLSTMCell(self.hidden_dim, state_is_tuple=True)
-                lstm_outputs, _ = tf.nn.dynamic_rnn(cell_fw=fwd_cell, dtype=tf.float32,
+                lstm_outputs, _ = tf.nn.dynamic_rnn(cell=fwd_cell, dtype=tf.float32,
                                                                  inputs=input_feats_expanded_drop,
                                                                  # inputs = input_feats,
                                                                  parallel_iterations=50,

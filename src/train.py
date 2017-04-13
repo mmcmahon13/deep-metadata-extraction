@@ -38,6 +38,7 @@ tf.app.flags.DEFINE_integer('shape_dim', 5, 'shape embedding dimension')
 
 # lstm layer dimensions
 tf.app.flags.DEFINE_integer('lstm_dim', 2048, 'lstm internal dimension')
+tf.app.flags.DEFINE_integer('max_seq_len', 30, 'should be same as seq_len')
 
 # training
 tf.app.flags.DEFINE_string('model', 'bilstm', 'which model to use [lstm, bilstm]')

@@ -36,7 +36,8 @@ OOV_STR = "<OOV>"
 embeddings_counts = {}
 
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
-                      widths, heights, wh_ratios, x_coords, y_coords, pages, lines, zones):
+                      widths, heights, wh_ratios, x_coords, y_coords, pages, lines, zones,
+                      place_scores, department_scores, university_scores, person_scores):
     example = tf.train.SequenceExample()
 
     fl_labels = example.feature_lists.feature_list["labels"]
@@ -97,6 +98,24 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
     for zone_id in zones:
         fl_zone_id.feature.add().int64_list.value.append(zone_id)
 
+    if FLAGS.use_lexicons:
+        fl_place_score= example.feature_lists.feature_list["place_scores"]
+        for place_score in place_scores:
+            fl_place_score.feature.add().int64_list.value.append(place_score)
+
+        fl_department_score = example.feature_lists.feature_list["department_scores"]
+        for department_score in department_scores:
+            fl_department_score.feature.add().int64_list.value.append(department_score)
+
+        fl_university_score = example.feature_lists.feature_list["university_scores"]
+        for university_score in university_scores:
+            fl_university_score.feature.add().int64_list.value.append(university_score)
+
+        fl_person_score = example.feature_lists.feature_list["person_scores"]
+        for person_score in person_scores:
+            fl_person_score.feature.add().int64_list.value.append(person_score)
+
+
     writer.write(example.SerializeToString())
 
 
@@ -127,6 +146,12 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
     pages = np.zeros(max_len_with_pad, dtype=np.int64)
     lines = np.zeros(max_len_with_pad, dtype=np.int64)
     zones = np.zeros(max_len_with_pad, dtype=np.int64)
+
+    # lexicon matches
+    place_scores = np.zeros(max_len_with_pad, dtype=np.int64)
+    department_scores = np.zeros(max_len_with_pad, dtype=np.int64)
+    university_scores = np.zeros(max_len_with_pad, dtype=np.int64)
+    person_scores = np.zeros(max_len_with_pad, dtype=np.int64)
 
     # todo should this just be a fixed len feature instead?
     page_lens = [len(word_tups)]
@@ -213,6 +238,13 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         x_coords[i] = x
         y_coords[i] = y
 
+        if FLAGS.use_lexicons:
+            place_scores[i] = word.place_score
+            department_scores[i] = word.department_score
+            university_scores[i] = word.university_score
+            person_scores[i] = word.person_score
+
+
     # bin the x and y coordinates (4 bins from 0 to max x, y on page)
     x_bins = np.linspace(min_x, max_x, num=FLAGS.x_bins)
     x_coords = np.digitize(x_coords, x_bins)
@@ -244,6 +276,12 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         print("lines ", lines)
         print("zones ", zones)
 
+        if FLAGS.use_lexicons:
+            print("place scores ", place_scores)
+            print("department scores ", department_scores)
+            print("university scores ", university_scores)
+            print("person scores ", person_scores)
+
     print("serializing sequence ", page_id)
     serialize_example(writer,
                       intmapped_labels,
@@ -259,7 +297,11 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
                       y_coords,
                       pages,
                       lines,
-                      zones)
+                      zones,
+                      place_scores,
+                      department_scores,
+                      university_scores,
+                      person_scores)
     return oov_count
 
 def make_example(writer, page, update_vocab, update_chars,
