@@ -388,7 +388,7 @@ def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, 
         # check for dictionary matches if we want to
         if FLAGS.use_lexicons:
             place_set, department_set, university_set, person_set = load_dictionaries()
-            match_dictionaries(doc, place_set, department_set, university_set, person_set)
+            match_dictionaries(doc, place_set, department_set, university_set, person_set, matching='approx')
 
         # just start by trying first page only
         num_words, oov_count, _ = make_example(writer, doc.pages[0], update_vocab, update_chars,

@@ -6,6 +6,8 @@ import os
 from xml.sax import make_parser, ContentHandler
 from xml.sax.handler import feature_namespaces, feature_external_ges
 
+import sys
+
 from pdf_objects import *
 
 
@@ -168,13 +170,21 @@ def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', '
     elif field_len > 0:
         words[-1].label = words[-1].label.replace('B-', 'U-')
 
-def match_dictionaries(doc, place_set, department_set, university_set, person_set, matching='exact'):
+def match_dictionaries(doc, place_set, department_set, university_set, person_set, matching='approx'):
     words = doc.words()
 
-    places = ' '.join(place_set)
-    depts= ' '.join(department_set)
-    unis = ' '.join(university_set)
-    people = ' '.join(person_set)
+    if matching == 'approx':
+        import simstring
+        # load simstring dbs
+        place_db = simstring.reader('dicts' + os.sep + 'places.db')
+        department_db = simstring.reader('dicts' + os.sep + 'departments.db')
+        university_db = simstring.reader('dicts' + os.sep + 'universities.db')
+        person_db = simstring.reader('dicts' + os.sep + 'people.db')
+        dbs = [place_db, department_db, university_db, person_db]
+
+        for db in dbs:
+            db.measure = simstring.cosine
+            db.threshold = 0.9
 
     # check all unigrams
     for word in words:
@@ -202,8 +212,28 @@ def match_dictionaries(doc, place_set, department_set, university_set, person_se
             else:
                 word.person_score = 0
         elif matching == 'approx':
-            # TODO use simstring/fuzzy string matching, output similarity score
-            pass
+            # print(tok)
+            # print(type(tok))
+            tok = tok.encode('ascii', 'ignore')
+            # print(type(tok))
+            sys.stdout.flush()
+            word.place_score = 0
+            word.place_score = 1 if len(place_db.retrieve(tok)) > 0 else word.place_score
+            word.department_score = 0
+            word.department_score = 1 if len(department_db.retrieve(tok)) > 0 else word.department_score
+            word.university_score = 0
+            word.university_score = 1 if len(university_db.retrieve(tok)) > 0 else word.university_score
+            word.person_score = 1 if len(person_db.retrieve(tok)) > 0 else 0
+
+            # if word.place_score == 1:
+            #     print(tok, "place")
+            # if word.department_score == 1:
+            #     print(tok, "dept")
+            # if word.university_score == 1:
+            #     print(tok, "university")
+            # if word.person_score == 1:
+            #     print(tok, "person")
+
 
 # TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does
 def load_dictionaries():
