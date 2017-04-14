@@ -5,6 +5,7 @@ from __future__ import print_function
 import multiprocessing
 import os
 from functools import partial
+from collections import defaultdict
 import codecs
 import sys
 import numpy as np
@@ -34,7 +35,9 @@ OOV_STR = "<OOV>"
 
 
 embeddings_counts = {}
+label_counts = defaultdict(int)
 
+# Given a TFRecord writer and feature lists, serialize them to an example and write them to the TFRrecord
 def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens, tok_lens,
                       widths, heights, wh_ratios, x_coords, y_coords, pages, lines, zones,
                       place_scores, department_scores, university_scores, person_scores):
@@ -118,7 +121,7 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
 
     writer.write(example.SerializeToString())
 
-
+# Given a list of word tuples, generate feature vectors for the sequence adn update the intmaps
 def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
                      label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y,
                      min_x, min_y):
@@ -165,6 +168,8 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         # get the word and its label
         token = word.text
         label = word.label
+
+        label_counts[label] += 1
 
         # if FLAGS.debug:
         #     print(token, label)

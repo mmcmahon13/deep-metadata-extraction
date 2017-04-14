@@ -201,6 +201,9 @@ def match_dictionaries(doc, place_set, department_set, university_set, person_se
                 word.person_score = 1
             else:
                 word.person_score = 0
+        elif matching == 'approx':
+            # TODO use simstring/fuzzy string matching, output similarity score
+            pass
 
 # TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does
 def load_dictionaries():

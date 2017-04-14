@@ -33,10 +33,14 @@ class Batcher(object):
         for seq_len, batches in self._data.items():
             self._data[seq_len] = [(label_batch[i], token_batch[i], shape_batch[i], char_batch[i], seq_len_batch[i], tok_len_batch[i],
                                     width_batch[i], height_batch[i], wh_ratio_batch[i], x_coord_batch[i], y_coord_batch[i],
-                                    page_id_batch[i], line_id_batch[i], zone_id_batch[i])
+                                    page_id_batch[i], line_id_batch[i], zone_id_batch[i],
+                                    place_score_batch[i], department_score_batch[i], university_score_batch[i],
+                                    person_score_batch[i])
                                   for (label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_len_batch,
                                        width_batch, height_batch, wh_ratio_batch, x_coord_batch, y_coord_batch,
-                                       page_id_batch, line_id_batch, zone_id_batch) in batches
+                                       page_id_batch, line_id_batch, zone_id_batch,
+                                       place_score_batch, department_score_batch, university_score_batch, person_score_batch)
+                                   in batches
                                   for i in range(label_batch.shape[0])]
 
         self.reset_batch_pointer()
@@ -68,10 +72,15 @@ class Batcher(object):
         _page_id_batch = np.array([b[11] for b in batch])
         _line_id_batch = np.array([b[12] for b in batch])
         _zone_id_batch = np.array([b[13] for b in batch])
+        _place_score_batch = np.array([b[14] for b in batch])
+        _department_score_batch = np.array([b[15] for b in batch])
+        _university_score_batch = np.array([b[16] for b in batch])
+        _person_score_batch = np.array([b[17] for b in batch])
 
         batch = (_label_batch, _token_batch, _shape_batch, _char_batch, _seq_len_batch, _tok_len_batch,
                  _width_batch, _height_batch, _wh_ratio_batch, _x_coord_batch, _y_coord_batch, _page_id_batch,
-                 _line_id_batch, _zone_id_batch)
+                 _line_id_batch, _zone_id_batch, _place_score_batch, _department_score_batch, _university_score_batch,
+                 _person_score_batch)
 
         return batch
 
@@ -128,7 +137,11 @@ class SeqBatcher(object):
             'y_coords': tf.FixedLenSequenceFeature([], tf.int64),
             'page_ids': tf.FixedLenSequenceFeature([], tf.int64),
             'line_ids': tf.FixedLenSequenceFeature([], tf.int64),
-            'zone_ids': tf.FixedLenSequenceFeature([], tf.int64)
+            'zone_ids': tf.FixedLenSequenceFeature([], tf.int64),
+            'place_scores': tf.FixedLenSequenceFeature([], tf.int64),
+            'department_scores': tf.FixedLenSequenceFeature([], tf.int64),
+            'university_scores': tf.FixedLenSequenceFeature([], tf.int64),
+            'person_scores': tf.FixedLenSequenceFeature([], tf.int64)
         }
 
         _, example = tf.parse_single_sequence_example(serialized=record_string, sequence_features=features)
@@ -146,15 +159,20 @@ class SeqBatcher(object):
         page_ids = example['page_ids']
         line_ids = example['line_ids']
         zone_ids = example['zone_ids']
+        place_scores = example['place_scores']
+        department_scores = example['department_scores']
+        university_scores = example['university_scores']
+        person_scores = example['person_scores']
 
         # context = c['context']
-        return labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids
+        return labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, \
+               page_ids, line_ids, zone_ids, place_scores, department_scores, university_scores, person_scores
         # return labels, tokens, labels, labels, labels
 
     def input_pipeline(self, filenames, batch_size, num_buckets, num_epochs=None):
         filename_queue = tf.train.string_input_producer(filenames, num_epochs=num_epochs, shuffle=True)
         labels, tokens, shapes, chars, seq_len, tok_len, widths, heights, wh_ratios, x_coords, y_coords, page_ids, \
-        line_ids, zone_ids = self.example_parser(filename_queue)
+        line_ids, zone_ids, place_scores, department_scores, university_scores, person_scores = self.example_parser(filename_queue)
         # min_after_dequeue defines how big a buffer we will randomly sample
         #   from -- bigger means better shuffling but slower start up and more
         #   memory used.
@@ -169,12 +187,14 @@ class SeqBatcher(object):
 
         if num_buckets == 0:
             next_batch = tf.train.batch([labels, tokens, shapes, chars, seq_len, tok_len, widths, heights,
-                                        wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids],
+                                        wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids,
+                                        place_scores, department_scores, university_scores, person_scores],
                                         batch_size=batch_size, capacity=capacity,
                                         dynamic_pad=True, allow_smaller_final_batch=True)
         else:
             bucket, next_batch = tf.contrib.training.bucket([labels, tokens, shapes, chars, seq_len, tok_len, widths, heights,
-                                                             wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids],
+                                                             wh_ratios, x_coords, y_coords, page_ids, line_ids, zone_ids,
+                                                             place_scores, department_scores, university_scores, person_scores],
                                                             np.random.randint(num_buckets),
                                                         batch_size, num_buckets, num_threads=1, capacity=capacity,
                                                         dynamic_pad=True, allow_smaller_final_batch=False)

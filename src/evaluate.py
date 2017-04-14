@@ -25,7 +25,9 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         # sys.stdout.flush()
         (eval_label_batch, eval_token_batch, eval_shape_batch, eval_char_batch, eval_seq_len_batch, eval_tok_len_batch,
          eval_width_batch, eval_height_batch, eval_wh_ratio_batch, eval_x_coord_batch, eval_y_coord_batch,
-         eval_page_id_batch, eval_line_id_batch, eval_zone_id_batch, eval_mask_batch) = batch
+         eval_page_id_batch, eval_line_id_batch, eval_zone_id_batch,
+         eval_place_scores_batch, eval_department_scores_batch, eval_university_scores_batch, eval_person_scores_batch,
+         eval_mask_batch) = batch
         batch_size, batch_seq_len = eval_token_batch.shape
 
         # reshape the features to be 3d tensors with 3rd dim = 1 (batch size) x (seq_len) x (1)
@@ -38,6 +40,10 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         eval_page_id_batch = np.expand_dims(eval_page_id_batch, axis=2)
         eval_line_id_batch = np.expand_dims(eval_line_id_batch, axis=2)
         eval_zone_id_batch = np.expand_dims(eval_zone_id_batch, axis=2)
+        eval_place_scores_batch = np.expand_dims(eval_place_scores_batch, axis=2)
+        eval_department_scores_batch = np.expand_dims(eval_department_scores_batch, axis=2)
+        eval_university_scores_batch = np.expand_dims(eval_university_scores_batch, axis=2)
+        eval_person_scores_batch = np.expand_dims(eval_person_scores_batch, axis=2)
 
         char_lens = np.sum(eval_tok_len_batch, axis=1)
         max_char_len = np.max(eval_tok_len_batch)
@@ -78,7 +84,33 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
             model.zones: eval_zone_id_batch
         }
 
+        geometric_feats_feeds = {
+            model.widths: eval_width_batch,
+            model.heights: eval_height_batch,
+            model.wh_ratios: eval_wh_ratio_batch,
+            model.x_coords: eval_x_coord_batch,
+            model.y_coords: eval_y_coord_batch,
+            model.pages: eval_page_id_batch,
+            model.lines: eval_line_id_batch,
+            model.zones: eval_zone_id_batch,
+        }
+
+        lexicon_feats_feeds = {
+            model.place_scores: eval_place_scores_batch,
+            model.department_scores: eval_department_scores_batch,
+            model.university_scores: eval_university_scores_batch,
+            model.person_scores: eval_person_scores_batch
+        }
+
+
         basic_feeds.update(char_embedding_feeds)
+
+        if FLAGS.use_geometric_feats:
+            basic_feeds.update(geometric_feats_feeds)
+
+        if FLAGS.use_lexicons:
+            basic_feeds.update(lexicon_feats_feeds)
+
         total_feeds = basic_feeds.copy()
 
         # predictions for one batch

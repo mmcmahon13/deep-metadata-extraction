@@ -48,7 +48,10 @@ tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 tf.app.flags.DEFINE_integer('max_epochs', 100, 'train for this many epochs')
 tf.app.flags.DEFINE_boolean('until_convergence', True, 'whether to run until convergence')
+
+# features to use
 tf.app.flags.DEFINE_boolean('use_geometric_feats', False, 'whether to use the geometric features')
+tf.app.flags.DEFINE_boolean('use_lexicons', False, 'whether to use lexicon matching features')
 
 # hyperparams
 tf.app.flags.DEFINE_string('nonlinearity', 'relu', 'nonlinearity function to use (tanh, sigmoid, relu)')
@@ -295,13 +298,15 @@ def train():
                     speed_denom += time.time() - start_time
                     speed_num += examples
                     evaluation.print_training_error(examples, start_time, epoch_loss, train_batcher._step)
+                    sys.stdout.flush()
                     log_every_running += log_every
 
                 # train iteration
                 # if we're not through an epoch yet, do training as usual
                 label_batch, token_batch, shape_batch, char_batch, seq_len_batch, tok_lengths_batch,\
                     widths_batch, heights_batch, wh_ratios_batch, x_coords_batch, y_coords_batch,\
-                    page_ids_batch, line_ids_batch, zone_ids_batch = \
+                    page_ids_batch, line_ids_batch, zone_ids_batch, \
+                    place_scores_batch, department_scores_batch, university_scores_batch, person_scores_batch= \
                     train_batcher.next_batch() if FLAGS.memmap_train else sess.run(train_batcher.next_batch_op)
 
                 # check that shapes look correct
@@ -333,6 +338,10 @@ def train():
                 page_ids_batch = np.expand_dims(page_ids_batch, axis=2)
                 line_ids_batch = np.expand_dims(line_ids_batch, axis=2)
                 zone_ids_batch = np.expand_dims(zone_ids_batch, axis=2)
+                place_scores_batch = np.expand_dims(place_scores_batch, axis=2)
+                department_scores_batch = np.expand_dims(department_scores_batch, axis=2)
+                university_scores_batch = np.expand_dims(university_scores_batch, axis=2)
+                person_scores_batch = np.expand_dims(person_scores_batch, axis=2)
 
                 # make mask out of seq lens
                 batch_size, batch_seq_len = token_batch.shape
@@ -399,10 +408,20 @@ def train():
                     model.zones: zone_ids_batch,
                 }
 
+                lexicon_feats_feeds = {
+                    model.place_scores: place_scores_batch,
+                    model.department_scores: department_scores_batch,
+                    model.university_scores: university_scores_batch,
+                    model.person_scores: person_scores_batch
+                }
+
                 lstm_feed.update(char_embedding_feeds)
 
                 if FLAGS.use_geometric_feats:
                     lstm_feed.update(geometric_feats_feeds)
+
+                if FLAGS.use_lexicons:
+                    lstm_feed.update(lexicon_feats_feeds)
 
                 # print("Running training op:")
                 sys.stdout.flush()

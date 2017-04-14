@@ -16,7 +16,7 @@ class BiLSTM(object):
     """
     def __init__(self, num_classes, vocab_size, shape_domain_size, char_domain_size, char_size,
             embedding_size, shape_size, nonlinearity, viterbi, hidden_dim, char_embeddings, embeddings=None,
-            use_geometric_feats=False):
+            use_geometric_feats=False, use_lexicons=False):
 
         self.num_classes = num_classes
         self.shape_domain_size = shape_domain_size
@@ -43,6 +43,12 @@ class BiLSTM(object):
         self.pages = tf.placeholder(tf.int64, [None, None, 1], name="pages")
         self.lines = tf.placeholder(tf.int64, [None, None, 1], name="lines")
         self.zones = tf.placeholder(tf.int64, [None, None, 1], name="zones")
+
+        # dictionary matching inputs
+        self.place_scores = tf.placeholder(tf.int64, [None, None, 1], name="place_scores")
+        self.department_scores = tf.placeholder(tf.int64, [None, None, 1], name="department_scores")
+        self.university_scores = tf.placeholder(tf.int64, [None, None, 1], name="university_scores")
+        self.person_scores = tf.placeholder(tf.int64, [None, None, 1], name="person_scores")
 
         # labels
         self.input_y = tf.placeholder(tf.int64, [None, None], name="input_y")
@@ -80,6 +86,7 @@ class BiLSTM(object):
         self.use_characters = char_size != 0
         self.use_shape = shape_size != 0
         self.use_geometric_feats = use_geometric_feats
+        self.use_lexicons = use_lexicons
 
         # Embedding layer
         # with tf.device('/cpu:0'), tf.name_scope("embedding"):
@@ -156,6 +163,13 @@ class BiLSTM(object):
                 input_list.append(tf.cast(self.lines, tf.float32))
                 input_list.append(tf.cast(self.zones, tf.float32))
                 input_size += 8
+
+            if self.use_lexicons:
+                input_list.append(tf.cast(self.place_scores, tf.float32))
+                input_list.append(tf.cast(self.department_scores, tf.float32))
+                input_list.append(tf.cast(self.university_scores, tf.float32))
+                input_list.append(tf.cast(self.person_scores, tf.float32))
+                input_size += 4
 
             # print(input.get_shape())
             # (w, h) = self.widths.get_shape()

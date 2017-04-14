@@ -124,13 +124,14 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
     while not done:
         try:
             dev_batch = sess.run(dev_batcher.next_batch_op)
-            # print("loaded dev batch %d" % num_batches)
+            print("loaded dev batch %d" % num_batches)
             sys.stdout.flush()
             dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch, dev_tok_len_batch, \
             dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch, dev_y_coord_batch, \
-            dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch = dev_batch
-            # print("batch length: %d" % len(dev_seq_len_batch))
-            # sys.stdout.flush()
+            dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch, \
+            dev_place_scores_batch, dev_department_scores_batch, dev_university_scores_batch, dev_person_scores_batch = dev_batch
+            print("batch length: %d" % len(dev_seq_len_batch))
+            sys.stdout.flush()
             num_dev_examples += len(dev_seq_len_batch)
             mask_batch = np.zeros(dev_token_batch.shape)
             for i, seq_lens in enumerate(dev_seq_len_batch):
@@ -144,7 +145,9 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                     start += seq_len
             dev_batches.append((dev_label_batch, dev_token_batch, dev_shape_batch, dev_char_batch, dev_seq_len_batch,
                                 dev_tok_len_batch, dev_width_batch, dev_height_batch, dev_wh_ratio_batch, dev_x_coord_batch,
-                                dev_y_coord_batch, dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch, mask_batch))
+                                dev_y_coord_batch, dev_page_id_batch, dev_line_id_batch, dev_zone_id_batch,
+                                dev_place_scores_batch, dev_department_scores_batch, dev_university_scores_batch,
+                                dev_person_scores_batch, mask_batch))
             num_batches += 1
         except:
             # print("Error loading dev batches")
@@ -165,14 +168,15 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
         while not done:
             try:
                 train_batch = sess.run(train_eval_batcher.next_batch_op)
-                # print("loaded train batch %d" % num_batches)
+                print("loaded train batch %d" % num_batches)
                 sys.stdout.flush()
                 train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                 train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
-                train_page_id_batch, train_line_id_batch, train_zone_id_batch = train_batch
+                train_page_id_batch, train_line_id_batch, train_zone_id_batch, \
+                train_place_scores_batch, train_department_scores_batch, train_university_scores_batch, train_person_scores_batch = train_batch
                 mask_batch = np.zeros(train_token_batch.shape)
-                # print("batch length: %d" % len(train_seq_len_batch))
-                # sys.stdout.flush()
+                print("batch length: %d" % len(train_seq_len_batch))
+                sys.stdout.flush()
                 num_train_examples += len(train_seq_len_batch)
                 for i, seq_lens in enumerate(train_seq_len_batch):
                     start = pad_width
@@ -182,7 +186,9 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
                         start += seq_len
                 train_batches.append((train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch,\
                                         train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
-                                        train_page_id_batch, train_line_id_batch, train_zone_id_batch, mask_batch))
+                                        train_page_id_batch, train_line_id_batch, train_zone_id_batch, \
+                                        train_place_scores_batch, train_department_scores_batch, \
+                                        train_university_scores_batch, train_person_scores_batch, mask_batch))
                 num_batches += 1
             except Exception as e:
                 # print("Error loading train batches")
