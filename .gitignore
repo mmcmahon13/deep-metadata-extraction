@@ -1,5 +1,5 @@
 grotoap/grotoap2
-bin/*
-conf/*
+
 .idea
+
 __pycache__
