@@ -135,7 +135,8 @@ class ParsTrueViz(ContentHandler):
             self.wordText = ""
             self.cur_line.addWord(self.cur_word)
 
-def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', 'AFFILIATION']):
+def words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', 'AFFILIATION', 'BIB_INFO',
+                                'CORRESPONDENCE', 'KEYWORDS', 'GLOSSARY']):
     last_label = ""
     last_tag = ""
     field_len = -1

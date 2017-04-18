@@ -25,6 +25,7 @@ tf.app.flags.DEFINE_integer('num_threads', 1, 'max number of threads to use for 
 tf.app.flags.DEFINE_boolean('debug', False, 'print debugging output')
 tf.app.flags.DEFINE_boolean('bilou', False, 'encode the word labels in BILOU format')
 tf.app.flags.DEFINE_integer('seq_len', 30, 'maximum sequence length')
+tf.app.flags.DEFINE_boolean('page', False, 'whether to use the whole page as an example (override sequence length)')
 tf.app.flags.DEFINE_integer('x_bins', 4, 'number of bins to use for x coordinate features')
 tf.app.flags.DEFINE_integer('y_bins', 4, 'number of bins to use for y coordinate features')
 
@@ -353,13 +354,22 @@ def make_example(writer, page, update_vocab, update_chars,
         for line in zone.lines:
             for word in line.words:
                 # create sequences containing some number of words (chop page up arbitrarily)?
-                if len(word_tups) < FLAGS.seq_len:
+                if len(word_tups) < FLAGS.seq_len or FLAGS.page:
                     word_tups.append((word, page.id, zone.id, line.id))
                 else:
+                    # process the finished sequence
                     oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
                      label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y, min_x, min_y)
+                    # start the next sequence
                     word_tups = [(word, page.id, zone.id, line.id)]
                 total_words += 1
+
+    # process the last unfinished sequence
+    oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map,
+                                  label_map,
+                                  label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x,
+                                  max_y, min_x, min_y)
+    total_words += 1
 
     if FLAGS.debug:
         print(len(label_map))

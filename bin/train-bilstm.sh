@@ -49,6 +49,9 @@ cmd="python src/train.py \
 --epsilon $epsilon \
 --beta2 $beta2 \
 --regularize_drop_penalty $drop_penalty \
+--use_geometric_feats \
+--use_lexicons \
+--train_eval \
 $predict_pad_param \
 $viterbi_param \
 $load_pretrained_param \
