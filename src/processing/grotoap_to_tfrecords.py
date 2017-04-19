@@ -28,6 +28,8 @@ tf.app.flags.DEFINE_integer('seq_len', 30, 'maximum sequence length')
 tf.app.flags.DEFINE_boolean('page', False, 'whether to use the whole page as an example (override sequence length)')
 tf.app.flags.DEFINE_integer('x_bins', 4, 'number of bins to use for x coordinate features')
 tf.app.flags.DEFINE_integer('y_bins', 4, 'number of bins to use for y coordinate features')
+tf.app.flags.DEFINE_boolean('full_header_labels', False, 'whether to use the expanded set of header labels, '
+                                                         'or the simple set of author, abstract, affiliation, title')
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -263,6 +265,7 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
             print("label %s not in vocab. adding..." % label)
             label_map[label] = len(label_map)
             label_int_str_map[label_map[label]] = label
+            label_counts[label] += 1
 
     intmapped_labels[:] = map(lambda s: label_map[s], labels)
 
@@ -393,7 +396,10 @@ def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, 
 
         # convert labels to BILOU
         if FLAGS.bilou:
-            words_to_bilou(doc)
+            if FLAGS.full_header_labels:
+                words_to_bilou(doc)
+            else:
+                words_to_bilou(doc, labels=['AUTHOR', 'TITLE', 'AUTHOR_TITLE', 'ABSTRACT', 'AFFILIATION'])
 
         # check for dictionary matches if we want to
         if FLAGS.use_lexicons:
@@ -538,7 +544,14 @@ def main(argv):
     else:
         use_threads = False
 
-    grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map, char_int_str_map, shape_int_str_map, use_threads)
+    grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str_map, token_int_str_map,
+                        char_int_str_map, shape_int_str_map, use_threads)
+    tot_words = 0
+    for label in label_counts:
+        tot_words += label_counts[label]
+    print("Class Distributions:")
+    for label in label_counts:
+        print("%s: %f" %(label, label_counts[label]/tot_words))
     export_maps(label_map, token_map, shape_map, char_map)
     # filename_queue = tf.train.string_input_producer([FLAGS.out_dir + '/iesl/canvas/mmcmahon/data/examples.proto'],
     #                                                 num_epochs=None)
@@ -547,4 +560,4 @@ def main(argv):
 if __name__ == '__main__':
     tf.app.run()
 
-# python grotoap_to_tfrecords.py --out_dir $DATA_DIR/pruned_pmc/train --load_vocab $DATA_DIR/pruned_PMC.txt --grotoap_dir /iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset --bilou
+# python grotoap_to_tfrecords.py --out_dir $DATA_DIR/pruned_pmc/train-30-lex-xlabels --load_vocab $DATA_DIR/pruned_PMC_min_10.txt --grotoap_dir /iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/train --bilou --use_lexicons

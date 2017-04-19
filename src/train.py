@@ -47,7 +47,7 @@ tf.app.flags.DEFINE_boolean('train_eval', False, 'whether to report train accura
 tf.app.flags.DEFINE_boolean('memmap_train', False, 'whether to load all training examples into memory')
 tf.app.flags.DEFINE_string('master', '', 'use for Supervisor')
 tf.app.flags.DEFINE_integer('max_epochs', 100, 'train for this many epochs')
-tf.app.flags.DEFINE_boolean('until_convergence', True, 'whether to run until convergence')
+tf.app.flags.DEFINE_boolean('until_convergence', False, 'whether to run until convergence')
 
 # just run eval?
 tf.app.flags.DEFINE_boolean('evaluate_only', False, 'whether to only run evaluation')
@@ -230,7 +230,7 @@ def run_train():
                                                                         train_batches, dev_batches, num_train_examples,
                                                                         num_dev_examples, train_batcher,
                                                                         labels_str_id_map, labels_id_str_map,
-                                                                        train_op, frontend_saver)
+                                                                        train_op, frontend_saver, vocab_str_id_map)
                     total_iterations += training_iteration
                     if FLAGS.model_dir:
                         print("Deserializing model: " + FLAGS.model_dir + "-frontend.tf")
@@ -250,139 +250,8 @@ def run_train():
         print("Best dev F1: %2.2f" % (best_score * 100))
 
 def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num_train_examples, num_dev_examples,
-          train_batcher, labels_str_id_map, labels_id_str_map, train_op, frontend_saver):
-    # # load preprocessed token, label, shape, char maps
-    # labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
-    # shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.train_dir)
-    #
-    # # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
-    # type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
-    #
-    # # load the embeddings
-    # embeddings = load_embeddings(vocab_str_id_map)
-    #
-    # labels_size = len(labels_str_id_map)
-    # char_domain_size = len(char_id_str_map)
-    # vocab_size = len(vocab_str_id_map)
-    # shape_domain_size = len(shape_id_str_map)
-    #
-    # with tf.Graph().as_default():
-    #     train_batcher = Batcher(FLAGS.train_dir, FLAGS.batch_size) if FLAGS.memmap_train else SeqBatcher(FLAGS.train_dir,
-    #                                                                                                FLAGS.batch_size)
-    #     dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
-    #
-    #     train_eval_batcher = SeqBatcher(FLAGS.train_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
-    #
-    #     # create character embedding model and train char embeddings:
-    #     # todo this is broken, fix it and add it in when I get the rest of the network running
-    #     if FLAGS.char_dim > 0 and FLAGS.char_model == "lstm":
-    #         print("creating and training character embeddings")
-    #         char_embedding_model = BiLSTMChar(char_domain_size, FLAGS.char_dim, int(FLAGS.char_tok_dim / 2))
-    #     # elif FLAGS.char_dim > 0 and FLAGS.char_model == "cnn":
-    #     #     char_embedding_model = CNNChar(char_domain_size, FLAGS.char_dim, FLAGS.char_tok_dim, layers_map[0][1]['width'])
-    #     else:
-    #         char_embedding_model = None
-    #     char_embeddings = char_embedding_model.outputs if char_embedding_model is not None else None
-    #
-    #     # create BiLSTM model
-    #     if FLAGS.model == 'bilstm':
-    #         model = BiLSTM(
-    #             num_classes=labels_size,
-    #             vocab_size=vocab_size,
-    #             shape_domain_size=shape_domain_size,
-    #             char_domain_size=char_domain_size,
-    #             char_size=FLAGS.char_dim,
-    #             embedding_size=FLAGS.embed_dim,
-    #             shape_size=FLAGS.shape_dim,
-    #             nonlinearity=FLAGS.nonlinearity,
-    #             viterbi=False, #viterbi=FLAGS.viterbi,
-    #             hidden_dim=FLAGS.lstm_dim,
-    #             char_embeddings=char_embeddings,
-    #             embeddings=embeddings,
-    #             use_geometric_feats=FLAGS.use_geometric_feats)
-    #     elif FLAGS.model == 'lstm':
-    #         model = LSTM(
-    #             num_classes=labels_size,
-    #             vocab_size=vocab_size,
-    #             shape_domain_size=shape_domain_size,
-    #             char_domain_size=char_domain_size,
-    #             char_size=FLAGS.char_dim,
-    #             embedding_size=FLAGS.embed_dim,
-    #             shape_size=FLAGS.shape_dim,
-    #             nonlinearity=FLAGS.nonlinearity,
-    #             viterbi=False,  # viterbi=FLAGS.viterbi,
-    #             hidden_dim=FLAGS.lstm_dim,
-    #             char_embeddings=char_embeddings,
-    #             embeddings=embeddings,
-    #             use_geometric_feats=FLAGS.use_geometric_feats)
-    #
-    #     # Define Training procedure
-    #     global_step = tf.Variable(0, name='global_step', trainable=False)
-    #
-    #     optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.lr, beta1=FLAGS.beta1, beta2=FLAGS.beta2,
-    #                                        epsilon=FLAGS.epsilon, name="optimizer")
-    #
-    #     model_vars = [v for v in tf.all_variables() if 'context_agg' not in v.name]
-    #
-    #     train_op = optimizer.minimize(model.loss, global_step=global_step, var_list=model_vars)
-    #
-    #     print("model vars: %d" % len(model_vars))
-    #     print(map(lambda v: v.name, model_vars))
-    #     print()
-    #     sys.stdout.flush()
-    #     get_trainable_params()
-    #
-    #     tf.initialize_all_variables()
-    #
-    #     frontend_opt_vars = [optimizer.get_slot(s, n) for n in optimizer.get_slot_names() for s in model_vars if
-    #                          optimizer.get_slot(s, n) is not None]
-    #
-    #     model_vars += frontend_opt_vars
-    #
-    #     # load pretrained model if one is provided
-    #     if FLAGS.load_dir:
-    #         reader = tf.train.NewCheckpointReader(FLAGS.load_dir + ".tf")
-    #         saved_var_map = reader.get_variable_to_shape_map()
-    #         intersect_vars = [k for k in tf.all_variables() if
-    #                           k.name.split(':')[0] in saved_var_map and k.get_shape() == saved_var_map[
-    #                               k.name.split(':')[0]]]
-    #         leftovers = [k for k in tf.all_variables() if
-    #                      k.name.split(':')[0] not in saved_var_map or k.get_shape() != saved_var_map[
-    #                          k.name.split(':')[0]]]
-    #         print("WARNING: Loading pretrained frontend, but not loading: ", map(lambda v: v.name, leftovers))
-    #         frontend_loader = tf.train.Saver(var_list=intersect_vars)
-    #
-    #     else:
-    #         frontend_loader = tf.train.Saver(var_list=model_vars)
-    #
-    #     frontend_saver = tf.train.Saver(var_list=model_vars)
-    #
-    #     sv = tf.python.train.Supervisor(logdir=FLAGS.model_dir if FLAGS.model_dir != '' else None,
-    #                                     global_step=global_step,
-    #                                     saver=None,
-    #                                     save_model_secs=0,
-    #                                     save_summaries_secs=0
-    #                                     )
-    #
-    #     training_start_time = time.time()
-    #
-    #     # create session
-    #     with sv.managed_session(FLAGS.master, config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-    #         print("session created")
-    #         sys.stdout.flush()
-    #
-    #         # start queue runner threads
-    #         threads = tf.train.start_queue_runners(sess=sess)
-    #
-    #         if FLAGS.load_dir != '':
-    #             print("Deserializing model: " + FLAGS.load_dir + ".tf")
-    #             frontend_loader.restore(sess, FLAGS.load_dir + ".tf")
-    #
-    #         # load batches
-    #         print()
-    #         dev_batches, train_batches, num_dev_examples, num_train_examples \
-    #             = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
-    #
+          train_batcher, labels_str_id_map, labels_id_str_map, train_op, frontend_saver, vocab_str_id_map):
+
     log_every = int(max(100, num_train_examples / 5))
 
     # start the training loop
@@ -435,12 +304,6 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
                     if update_frontend:
                         save_path = frontend_saver.save(sess, FLAGS.model_dir + "-frontend.tf")
                         print("Serialized model: %s" % save_path)
-                    # elif update_context and not update_frontend:
-                    #     save_path = context_saver.save(sess, FLAGS.model_dir + "-context.tf")
-                    #     print("Serialized model: %s" % save_path)
-                    # else:
-                    #     save_path = saver.save(sess, FLAGS.model_dir + ".tf")
-                    #     print("Serialized model: %s" % save_path)
             else:
                 num_lower += 1
             # if we've done the minimum number of iterations, check to see if the best score has converged
@@ -481,6 +344,12 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
             page_ids_batch, line_ids_batch, zone_ids_batch, \
             place_scores_batch, department_scores_batch, university_scores_batch, person_scores_batch= \
             train_batcher.next_batch() if FLAGS.memmap_train else sess.run(train_batcher.next_batch_op)
+
+        # apply word dropout
+        # create word dropout mask
+        word_probs = np.random.random(token_batch.shape)
+        drop_indices = np.where((word_probs > FLAGS.word_dropout))
+        token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
 
         # check that shapes look correct
         # print("label_batch_shape: ", label_batch.shape)
@@ -605,23 +474,6 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
         train_batcher._step += 1
 
     return best_score, training_iteration, speed_num/speed_denom
-
-        # average training speed
-        # train_speed = speed_num / speed_denom
-
-        # # join threads
-        # sv.coord.request_stop()
-        # sv.coord.join(threads)
-        # sess.close()
-        #
-        # total_iterations = training_iteration
-        #
-        # # print time information
-        # total_time = time.time() - training_start_time
-        # print("Training time: %d minutes, %d iterations (%3.2f minutes/iteration)" % (
-        # total_time / 60, total_iterations, total_time / (60 * total_iterations)))
-        # print("Avg training speed: %f examples/second" % (train_speed))
-        # # print("Best dev F1: %2.2f" % (best_score * 100))
 
 def main(argv):
     print('\n'.join(sorted(["%s : %s" % (str(k), str(v)) for k, v in FLAGS.__dict__['__flags'].iteritems()])))

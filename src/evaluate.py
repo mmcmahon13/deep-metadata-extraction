@@ -143,7 +143,11 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
 
     # TODO also print out micro/macro?
     w_f1 = f1_score(flat_labels, flat_preds, average='weighted')
+    micro_f1 = f1_score(flat_labels, flat_preds, average='micro')
+    macro_f1 = f1_score(flat_labels, flat_preds, average='macro')
     print('Weighted F1: %f' % w_f1)
+    print('Micro F1: %f' % micro_f1)
+    print('Macro F1: %f' % macro_f1)
     print('Accuracy: %f' % accuracy)
     print()
 

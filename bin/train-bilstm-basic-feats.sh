@@ -42,13 +42,14 @@ cmd="python src/train.py \
 --batch_size $batch_size \
 --nonlinearity $nonlinearity \
 --initialization $initialization \
---char_dim $char_dim \
---char_tok_dim $char_tok_dim \
+--char_dim 0 \
+--char_tok_dim 0 \
 --shape_dim $shape_dim \
 --clip_norm $clip_grad \
 --epsilon $epsilon \
 --beta2 $beta2 \
 --regularize_drop_penalty $drop_penalty \
+--train_eval \
 $predict_pad_param \
 $viterbi_param \
 $load_pretrained_param \
@@ -56,3 +57,4 @@ $additional_args"
 
 echo ${cmd}
 eval ${cmd}
+#!/usr/bin/env bash
