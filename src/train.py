@@ -104,7 +104,7 @@ def run_train():
         train_eval_batcher = SeqBatcher(FLAGS.train_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
         # create character embedding model and train char embeddings:
-        # todo this is broken, fix it and add it in when I get the rest of the network running
+        # todo add in dropout?
         if FLAGS.char_dim > 0 and FLAGS.char_model == "lstm":
             print("creating and training character embeddings")
             char_embedding_model = BiLSTMChar(char_domain_size, FLAGS.char_dim, int(FLAGS.char_tok_dim / 2))
@@ -351,6 +351,8 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
         drop_indices = np.where((word_probs > FLAGS.word_dropout))
         token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
 
+        # TODO apply dropout to the rest of the features as well - are 0 features going to be an issue?
+
         # check that shapes look correct
         # print("label_batch_shape: ", label_batch.shape)
         # print("token batch shape: ", token_batch.shape)
@@ -420,7 +422,8 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
             char_embedding_model.batch_size: batch_size,
             char_embedding_model.max_seq_len: batch_seq_len,
             char_embedding_model.token_lengths: tok_lengths_batch,
-            char_embedding_model.max_tok_len: max_char_len
+            char_embedding_model.max_tok_len: max_char_len,
+            char_embedding_model.input_dropout_keep_prob: FLAGS.char_input_dropout
         }
 
         lstm_feed = {

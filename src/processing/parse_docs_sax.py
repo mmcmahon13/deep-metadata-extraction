@@ -306,20 +306,20 @@ def parse_doc(doc_path):
 
 def main():
     doc = parse_doc('C:\Users\Molly\Google_Drive\spring_17\deep-metadata-extraction\\grotoap\grotoap2\\dataset\\00\\1276794.cxml')
-    place_set, department_set, university_set, person_set = load_dictionaries()
-    match_dictionaries(doc, place_set, department_set, university_set, person_set)
-    words = doc.words()
-    for word in words:
-        print('%s , %d, %d, %d, %d' %(word.text, word.place_score, word.department_score, word.university_score, word.person_score))
+    # place_set, department_set, university_set, person_set = load_dictionaries()
+    # match_dictionaries(doc, place_set, department_set, university_set, person_set)
+    # words = doc.words()
+    # for word in words:
+    #     print('%s , %d, %d, %d, %d' %(word.text, word.place_score, word.department_score, word.university_score, word.person_score))
 
     # print(doc.getFullText())
     # print()
     # print(doc.toString())
-    # words_to_bilou(doc)
-    # print("\nWORDS\n")
-    # words = doc.words()
-    # for word in words:
-    #     print('%s , %s' %(word.text, word.label))
+    words_to_bilou(doc)
+    print("\nWORDS\n")
+    words = doc.words()
+    for word in words:
+        print('%s , %s' %(word.text, word.label))
     # print("\nLINES\n")
     # lines = doc.lines()
     # print("\nZONES\n")

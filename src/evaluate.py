@@ -128,9 +128,9 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
 
     flat_preds = np.array([labels_id_str_map[p] for p in flat_preds])
     flat_labels = np.array([labels_id_str_map[l] for l in flat_labels])
-    print(len(flat_preds))
-    print(len(flat_labels))
-    print(flat_preds[0])
+    # print(len(flat_preds))
+    # print(len(flat_labels))
+    # print(flat_preds[0])
     sys.stdout.flush()
 
     print(labels_str_id_map.keys())
