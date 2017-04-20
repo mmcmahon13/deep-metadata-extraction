@@ -79,6 +79,7 @@ class BiLSTM(object):
         self.l2_loss = tf.constant(0.0)
 
         # set the pad token to a constant 0 vector
+        # todo do something similar for all embedded, discrete features
         self.word_zero_pad = tf.constant(0.0, dtype=tf.float32, shape=[1, embedding_size])
         self.shape_zero_pad = tf.constant(0.0, dtype=tf.float32, shape=[1, shape_size])
         self.char_zero_pad = tf.constant(0.0, dtype=tf.float32, shape=[1, char_size])
@@ -143,6 +144,7 @@ class BiLSTM(object):
             if self.use_characters:
                 input_list.append(self.char_embeddings)
                 input_size += self.char_size
+            # todo add embeddings for all discrete features
             if self.use_shape:
                 shape_embeddings_shape = (self.shape_domain_size - 1, self.shape_size)
                 w_s = tf_utils.initialize_embeddings(shape_embeddings_shape, name="w_s")
@@ -150,9 +152,8 @@ class BiLSTM(object):
                 input_list.append(shape_embeddings)
                 input_size += self.shape_size
 
+            # todo change this to embeddings (see above)
             if self.use_geometric_feats:
-                # TODO: add other features to input list, concat them to end of input_feats
-                # todo this is the wrong shape to be concatenated
                 # it's giving some issue with the typing, so I'm just casting everythint ot be the same
                 input_list.append(tf.cast(self.widths, tf.float32))
                 input_list.append(tf.cast(self.heights, tf.float32))

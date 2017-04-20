@@ -129,7 +129,8 @@ def run_train():
                 hidden_dim=FLAGS.lstm_dim,
                 char_embeddings=char_embeddings,
                 embeddings=embeddings,
-                use_geometric_feats=FLAGS.use_geometric_feats)
+                use_geometric_feats=FLAGS.use_geometric_feats,
+                use_lexicons=FLAGS.use_lexicons)
         elif FLAGS.model == 'lstm':
             model = LSTM(
                 num_classes=labels_size,
@@ -144,7 +145,8 @@ def run_train():
                 hidden_dim=FLAGS.lstm_dim,
                 char_embeddings=char_embeddings,
                 embeddings=embeddings,
-                use_geometric_feats=FLAGS.use_geometric_feats)
+                use_geometric_feats=FLAGS.use_geometric_feats,
+                use_lexicons=FLAGS.use_lexicons)
 
         # Define Training procedure
         global_step = tf.Variable(0, name='global_step', trainable=False)
