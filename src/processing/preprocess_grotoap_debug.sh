@@ -7,18 +7,18 @@ export DATA_DIR="/iesl/canvas/mmcmahon/data/"
 
 additional_args=${@:1}
 
-# process the train set
-cmd="python grotoap_to_tfrecords.py \
---grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/train \
---out_dir $DATA_DIR/pruned_pmc/train-30-lex/ \
---load_vocab $DATA_DIR/pruned_PMC_min_10.txt \
---bilou \
---use_lexicons \
-$additional_args
-"
-echo "processing train set:"
-echo ${cmd}
-eval ${cmd}
+## process the train set
+#cmd="python grotoap_to_tfrecords.py \
+#--grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/train \
+#--out_dir $DATA_DIR/pruned_pmc/train-30-lex/ \
+#--load_vocab $DATA_DIR/pruned_PMC_min_10.txt \
+#--bilou \
+#--use_lexicons \
+#$additional_args
+#"
+#echo "processing train set:"
+#echo ${cmd}
+#eval ${cmd}
 
 # process the dev set using the maps created in the train processing
 cmd="python grotoap_to_tfrecords.py \

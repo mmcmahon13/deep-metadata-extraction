@@ -40,10 +40,10 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         eval_page_id_batch = np.expand_dims(eval_page_id_batch, axis=2)
         eval_line_id_batch = np.expand_dims(eval_line_id_batch, axis=2)
         eval_zone_id_batch = np.expand_dims(eval_zone_id_batch, axis=2)
-        eval_place_scores_batch = np.expand_dims(eval_place_scores_batch, axis=2)
-        eval_department_scores_batch = np.expand_dims(eval_department_scores_batch, axis=2)
-        eval_university_scores_batch = np.expand_dims(eval_university_scores_batch, axis=2)
-        eval_person_scores_batch = np.expand_dims(eval_person_scores_batch, axis=2)
+        # eval_place_scores_batch = np.expand_dims(eval_place_scores_batch, axis=2)
+        # eval_department_scores_batch = np.expand_dims(eval_department_scores_batch, axis=2)
+        # eval_university_scores_batch = np.expand_dims(eval_university_scores_batch, axis=2)
+        # eval_person_scores_batch = np.expand_dims(eval_person_scores_batch, axis=2)
 
         char_lens = np.sum(eval_tok_len_batch, axis=1)
         max_char_len = np.max(eval_tok_len_batch)
@@ -133,8 +133,8 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
     # print(flat_preds[0])
     sys.stdout.flush()
 
-    print(labels_str_id_map.keys())
-    sys.stdout.flush()
+    # print(labels_str_id_map.keys())
+    # sys.stdout.flush()
 
     tag_set = [l.split('-')[-1] for l in labels_str_id_map.keys()]
 

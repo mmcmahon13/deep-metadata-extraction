@@ -78,6 +78,7 @@ for lr in ${lrs[@]}; do
 
                         #                                                commands+=("CUDA_VISIBLE_DEVICES=XX python src/train.py \
                                                         commands+=("srun --gres=gpu:1 --partition=titanx-short,m40-short python src/train.py \
+                                                        --model $model \
                                                         --train_dir $train_dir \
                                                         --dev_dir $dev_dir \
                                                         --max_seq_len $max_sent_len \
@@ -101,6 +102,8 @@ for lr in ${lrs[@]}; do
                                                         --char_tok_dim $char_tok_dim \
                                                         --model $model \
                                                         --regularize_drop_penalty $drop_penalty \
+                                                        --use_geometric_feats \
+                                                        --use_lexicons \
                                                         $additional_args \
                                                         &> $OUT_LOG/train-$fname_append.log")
                                                     done

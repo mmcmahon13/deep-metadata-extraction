@@ -28,11 +28,21 @@ tf.app.flags.DEFINE_string('load_dir', '', 'load model from this dir (if empty d
 tf.app.flags.DEFINE_string('embeddings', '', 'path to embeddings file')
 tf.app.flags.DEFINE_integer('embed_dim', 200, 'dimensions of the words embeddings')
 
-# character embeddings
+# character/other feature embeddings
 tf.app.flags.DEFINE_integer('char_dim', 0, 'character embedding dimension') # set to 25?
 tf.app.flags.DEFINE_integer('char_tok_dim', 0, 'character token embedding dimension')
 tf.app.flags.DEFINE_string('char_model', 'lstm', 'character embedding model (lstm, cnn)')
 tf.app.flags.DEFINE_integer('shape_dim', 5, 'shape embedding dimension')
+# tf.app.flags.DEFINE_integer('width_dim', 4, 'width embedding dimension')
+# tf.app.flags.DEFINE_integer('height_dim', 4, 'height embedding dimension')
+# tf.app.flags.DEFINE_integer('wh_ratio_dim', 4, 'wh_ratio embedding dimension')
+# tf.app.flags.DEFINE_integer('line_dim', 4, 'line embedding dimension')
+# tf.app.flags.DEFINE_integer('zone_dim', 4, 'zone embedding dimension')
+# tf.app.flags.DEFINE_integer('place_dim', 2, 'place embedding dimension')
+# tf.app.flags.DEFINE_integer('department_dim', 2, 'department embedding dimension')
+# tf.app.flags.DEFINE_integer('university_dim', 2, 'university embedding dimension')
+# tf.app.flags.DEFINE_integer('person_dim', 2, 'person embedding dimension')
+tf.app.flags.DEFINE_integer('lex_dim', 5, 'lexicon embedding dimension')
 
 # TODO: should we be embedding other features?
 
@@ -124,6 +134,7 @@ def run_train():
                 char_size=FLAGS.char_dim,
                 embedding_size=FLAGS.embed_dim,
                 shape_size=FLAGS.shape_dim,
+                lex_size=FLAGS.lex_dim,
                 nonlinearity=FLAGS.nonlinearity,
                 viterbi=False, #viterbi=FLAGS.viterbi,
                 hidden_dim=FLAGS.lstm_dim,
@@ -131,22 +142,22 @@ def run_train():
                 embeddings=embeddings,
                 use_geometric_feats=FLAGS.use_geometric_feats,
                 use_lexicons=FLAGS.use_lexicons)
-        elif FLAGS.model == 'lstm':
-            model = LSTM(
-                num_classes=labels_size,
-                vocab_size=vocab_size,
-                shape_domain_size=shape_domain_size,
-                char_domain_size=char_domain_size,
-                char_size=FLAGS.char_dim,
-                embedding_size=FLAGS.embed_dim,
-                shape_size=FLAGS.shape_dim,
-                nonlinearity=FLAGS.nonlinearity,
-                viterbi=False,  # viterbi=FLAGS.viterbi,
-                hidden_dim=FLAGS.lstm_dim,
-                char_embeddings=char_embeddings,
-                embeddings=embeddings,
-                use_geometric_feats=FLAGS.use_geometric_feats,
-                use_lexicons=FLAGS.use_lexicons)
+        # elif FLAGS.model == 'lstm':
+        #     model = LSTM(
+        #         num_classes=labels_size,
+        #         vocab_size=vocab_size,
+        #         shape_domain_size=shape_domain_size,
+        #         char_domain_size=char_domain_size,
+        #         char_size=FLAGS.char_dim,
+        #         embedding_size=FLAGS.embed_dim,
+        #         shape_size=FLAGS.shape_dim,
+        #         nonlinearity=FLAGS.nonlinearity,
+        #         viterbi=False,  # viterbi=FLAGS.viterbi,
+        #         hidden_dim=FLAGS.lstm_dim,
+        #         char_embeddings=char_embeddings,
+        #         embeddings=embeddings,
+        #         use_geometric_feats=FLAGS.use_geometric_feats,
+        #         use_lexicons=FLAGS.use_lexicons)
 
         # Define Training procedure
         global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -384,10 +395,10 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
         page_ids_batch = np.expand_dims(page_ids_batch, axis=2)
         line_ids_batch = np.expand_dims(line_ids_batch, axis=2)
         zone_ids_batch = np.expand_dims(zone_ids_batch, axis=2)
-        place_scores_batch = np.expand_dims(place_scores_batch, axis=2)
-        department_scores_batch = np.expand_dims(department_scores_batch, axis=2)
-        university_scores_batch = np.expand_dims(university_scores_batch, axis=2)
-        person_scores_batch = np.expand_dims(person_scores_batch, axis=2)
+        # place_scores_batch = np.expand_dims(place_scores_batch, axis=2)
+        # department_scores_batch = np.expand_dims(department_scores_batch, axis=2)
+        # university_scores_batch = np.expand_dims(university_scores_batch, axis=2)
+        # person_scores_batch = np.expand_dims(person_scores_batch, axis=2)
 
         # make mask out of seq lens
         batch_size, batch_seq_len = token_batch.shape

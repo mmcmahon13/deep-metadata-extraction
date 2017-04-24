@@ -15,7 +15,7 @@ class BiLSTM(object):
     A bidirectional LSTM for text classification.
     """
     def __init__(self, num_classes, vocab_size, shape_domain_size, char_domain_size, char_size,
-            embedding_size, shape_size, nonlinearity, viterbi, hidden_dim, char_embeddings, embeddings=None,
+            embedding_size, shape_size, lex_size, nonlinearity, viterbi, hidden_dim, char_embeddings, embeddings=None,
             use_geometric_feats=False, use_lexicons=False):
 
         self.num_classes = num_classes
@@ -24,6 +24,7 @@ class BiLSTM(object):
         self.char_size = char_size
         self.embedding_size = embedding_size
         self.shape_size = shape_size
+        self.lex_size = lex_size
         self.hidden_dim = hidden_dim
         self.nonlinearity = nonlinearity
         self.char_embeddings = char_embeddings
@@ -35,20 +36,20 @@ class BiLSTM(object):
         self.input_x2 = tf.placeholder(tf.int64, [None, None], name="input_x2")
 
         # geometric inputs
-        self.widths = tf.placeholder(tf.float64, [None, None, 1], name="widths")
-        self.heights = tf.placeholder(tf.float64, [None, None, 1], name="heights")
-        self.wh_ratios = tf.placeholder(tf.float64, [None, None, 1], name="wh_ratios")
-        self.x_coords = tf.placeholder(tf.float64, [None, None, 1], name="x_coords")
-        self.y_coords = tf.placeholder(tf.float64, [None, None, 1], name="y_coords")
+        self.widths = tf.placeholder(tf.float32, [None, None, 1], name="widths")
+        self.heights = tf.placeholder(tf.float32, [None, None, 1], name="heights")
+        self.wh_ratios = tf.placeholder(tf.float32, [None, None, 1], name="wh_ratios")
+        self.x_coords = tf.placeholder(tf.float32, [None, None, 1], name="x_coords")
+        self.y_coords = tf.placeholder(tf.float32, [None, None, 1], name="y_coords")
         self.pages = tf.placeholder(tf.int64, [None, None, 1], name="pages")
         self.lines = tf.placeholder(tf.int64, [None, None, 1], name="lines")
         self.zones = tf.placeholder(tf.int64, [None, None, 1], name="zones")
 
         # dictionary matching inputs
-        self.place_scores = tf.placeholder(tf.int64, [None, None, 1], name="place_scores")
-        self.department_scores = tf.placeholder(tf.int64, [None, None, 1], name="department_scores")
-        self.university_scores = tf.placeholder(tf.int64, [None, None, 1], name="university_scores")
-        self.person_scores = tf.placeholder(tf.int64, [None, None, 1], name="person_scores")
+        self.place_scores = tf.placeholder(tf.int64, [None, None], name="place_scores")
+        self.department_scores = tf.placeholder(tf.int64, [None, None], name="department_scores")
+        self.university_scores = tf.placeholder(tf.int64, [None, None], name="university_scores")
+        self.person_scores = tf.placeholder(tf.int64, [None, None], name="person_scores")
 
         # labels
         self.input_y = tf.placeholder(tf.int64, [None, None], name="input_y")
@@ -160,17 +161,34 @@ class BiLSTM(object):
                 input_list.append(tf.cast(self.wh_ratios, tf.float32))
                 input_list.append(tf.cast(self.x_coords, tf.float32))
                 input_list.append(tf.cast(self.y_coords, tf.float32))
-                input_list.append(tf.cast(self.pages, tf.float32))
+                # input_list.append(tf.cast(self.pages, tf.float32))
                 input_list.append(tf.cast(self.lines, tf.float32))
                 input_list.append(tf.cast(self.zones, tf.float32))
-                input_size += 8
+                input_size += 7
 
             if self.use_lexicons:
-                input_list.append(tf.cast(self.place_scores, tf.float32))
-                input_list.append(tf.cast(self.department_scores, tf.float32))
-                input_list.append(tf.cast(self.university_scores, tf.float32))
-                input_list.append(tf.cast(self.person_scores, tf.float32))
-                input_size += 4
+                lex_embeddings_shape = (1, self.lex_size)
+                # params for lexicon embeddings
+                w_place = tf_utils.initialize_embeddings(lex_embeddings_shape, name="w_place")
+                w_dept = tf_utils.initialize_embeddings(lex_embeddings_shape, name="w_dept")
+                w_uni = tf_utils.initialize_embeddings(lex_embeddings_shape, name="w_uni")
+                w_person = tf_utils.initialize_embeddings(lex_embeddings_shape, name="w_person")
+                # embedding lookup tables
+                place_embeddings = tf.nn.embedding_lookup(w_place, self.place_scores)
+                dept_embeddings = tf.nn.embedding_lookup(w_dept, self.department_scores)
+                uni_embeddings = tf.nn.embedding_lookup(w_uni, self.university_scores)
+                person_embeddings = tf.nn.embedding_lookup(w_person, self.person_scores)
+                # add lex embeddings to input list
+                input_list.append(place_embeddings)
+                input_list.append(dept_embeddings)
+                input_list.append(uni_embeddings)
+                input_list.append(person_embeddings)
+                input_size += self.shape_size
+                # input_list.append(tf.cast(self.place_scores, tf.float32))
+                # input_list.append(tf.cast(self.department_scores, tf.float32))
+                # input_list.append(tf.cast(self.university_scores, tf.float32))
+                # input_list.append(tf.cast(self.person_scores, tf.float32))
+                input_size += 4 * self.lex_size
 
             # print(input.get_shape())
             # (w, h) = self.widths.get_shape()

@@ -89,25 +89,26 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
 
     fl_x_coords = example.feature_lists.feature_list["x_coords"]
     for x_coord in x_coords:
-        fl_x_coords.feature.add().int64_list.value.append(x_coord)
+        fl_x_coords.feature.add().float_list.value.append(x_coord)
 
     fl_y_coords = example.feature_lists.feature_list["y_coords"]
     for y_coord in y_coords:
-        fl_y_coords.feature.add().int64_list.value.append(y_coord)
+        fl_y_coords.feature.add().float_list.value.append(y_coord)
 
     # page, zone, line feats
     fl_page_id = example.feature_lists.feature_list["page_ids"]
     for page_id in pages:
-        fl_page_id.feature.add().int64_list.value.append(page_id)
+        fl_page_id.feature.add().float_list.value.append(page_id)
 
     fl_line_id = example.feature_lists.feature_list["line_ids"]
     for line_id in lines:
-        fl_line_id.feature.add().int64_list.value.append(line_id)
+        fl_line_id.feature.add().float_list.value.append(line_id)
 
     fl_zone_id = example.feature_lists.feature_list["zone_ids"]
     for zone_id in zones:
-        fl_zone_id.feature.add().int64_list.value.append(zone_id)
+        fl_zone_id.feature.add().float_list.value.append(zone_id)
 
+    # lexicon binary features
     if FLAGS.use_lexicons:
         fl_place_score= example.feature_lists.feature_list["place_scores"]
         for place_score in place_scores:
@@ -131,7 +132,7 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
 # Given a list of word tuples, generate feature vectors for the sequence adn update the intmaps
 def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
                      label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y,
-                     min_x, min_y):
+                     min_x, min_y, min_height, max_height, min_width, max_width, max_line_id, max_zone_id):
     oov_count = 0
     # ignore padding for now and just let the batcher handle variable length sequences?
     max_len_with_pad = len(word_tups)
@@ -140,24 +141,29 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
     ## for each sequence, keep track of the following word features:
     # vector of token ids
     tokens = np.zeros(max_len_with_pad, dtype=np.int64)
+
     # vector of shape ids
     shapes = np.zeros(max_len_with_pad, dtype=np.int64)
+
     # vector of character ids
     chars = np.zeros(sum_word_len, dtype=np.int64)
+
     # vector of label ids
     intmapped_labels = np.zeros(max_len_with_pad, dtype=np.int64)
-    # geometrical information:
+
+    # geometrical information (percentages, in range 0-1)
     widths = np.zeros(max_len_with_pad, dtype=np.float64)
     heights = np.zeros(max_len_with_pad, dtype=np.float64)
     wh_ratios = np.zeros(max_len_with_pad, dtype=np.float64)
     x_coords = np.zeros(max_len_with_pad, dtype=np.float64)
     y_coords = np.zeros(max_len_with_pad, dtype=np.float64)
-    # enclosing region information (keep track of what zone, page, or line each word is in)
-    pages = np.zeros(max_len_with_pad, dtype=np.int64)
-    lines = np.zeros(max_len_with_pad, dtype=np.int64)
-    zones = np.zeros(max_len_with_pad, dtype=np.int64)
 
-    # lexicon matches
+    # enclosing region information (keep track of what zone, page, or line each word is in)
+    pages = np.zeros(max_len_with_pad, dtype=np.float64)
+    lines = np.zeros(max_len_with_pad, dtype=np.float64)
+    zones = np.zeros(max_len_with_pad, dtype=np.float64)
+
+    # lexicon matches (embed these later?)
     place_scores = np.zeros(max_len_with_pad, dtype=np.int64)
     department_scores = np.zeros(max_len_with_pad, dtype=np.int64)
     university_scores = np.zeros(max_len_with_pad, dtype=np.int64)
@@ -204,10 +210,9 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         label_bilou = label
 
         # get bounding box info (and other geometrical features?)
-        top_left = word.top_left
-        bottom_right = word.bottom_right
         height = word.height()
         width = word.width()
+
         if height != 0:
             wh_ratio = width / height
         else:
@@ -240,30 +245,30 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         labels.append(label_bilou)
         last_label = label_bilou
 
-        # update geometric features
-        widths[i] = width
-        heights[i] = height
+        # update geometric features (percentages of max widht/height on the page)
+        widths[i] = (width - min_width) / (max_width - min_width)
+        heights[i] = (height - min_height) / (max_height - min_height)
         # todo should we also bin widths, heights, wh ratios, etc.?
         wh_ratios[i] = wh_ratio
         # add one to all these, so that the class ids start at 1 and not 0 (to avoid issues during masking)
-        pages[i] = int(page_id) + 1
-        lines[i] = int(line_id) + 1
-        zones[i] = int(zone_id) + 1
-        x_coords[i] = x
-        y_coords[i] = y
+        pages[i] = int(page_id)
+        lines[i] = int(line_id) / max_line_id
+        zones[i] = int(zone_id) / max_zone_id
+        x_coords[i] = (x - min_x) / (max_x - min_x)
+        y_coords[i] = (y - min_y) / (max_y - min_y)
 
         if FLAGS.use_lexicons:
-            place_scores[i] = word.place_score + 1
-            department_scores[i] = word.department_score + 1
-            university_scores[i] = word.university_score + 1
-            person_scores[i] = word.person_score + 1
+            place_scores[i] = word.place_score
+            department_scores[i] = word.department_score
+            university_scores[i] = word.university_score
+            person_scores[i] = word.person_score
 
 
     # bin the x and y coordinates (4 bins from 0 to max x, y on page)
-    x_bins = np.linspace(min_x, max_x, num=FLAGS.x_bins)
-    x_coords = np.digitize(x_coords, x_bins) + 1
-    y_bins = np.linspace(min_y, max_y, num=FLAGS.y_bins)
-    y_coords = np.digitize(y_coords, y_bins) + 1
+    # x_bins = np.linspace(min_x, max_x, num=FLAGS.x_bins)
+    # x_coords = np.digitize(x_coords, x_bins) + 1
+    # y_bins = np.linspace(min_y, max_y, num=FLAGS.y_bins)
+    # y_coords = np.digitize(y_coords, y_bins) + 1
 
     # todo bin line/zone ids, heights/widths
 
@@ -345,9 +350,16 @@ def make_example(writer, page, update_vocab, update_chars,
     max_y = 0
     min_x = 100000
     min_y = 100000
+    max_width = 0
+    min_width = 1000000
+    max_height = 0
+    min_height = 100000
+    max_line_id = 0
+    max_zone_id = 0
     for zone in page.zones:
         for line in zone.lines:
             for word in line.words:
+                # get x/y max and min
                 (x,y) = word.centerpoint()
                 if x > max_x:
                     max_x = x
@@ -357,6 +369,30 @@ def make_example(writer, page, update_vocab, update_chars,
                     max_y = y
                 elif y < min_y:
                     min_y = y
+
+                # get width/height max and min
+                width = word.width()
+                height = word.height()
+                if width > max_width:
+                    max_width = width
+                elif width < min_width:
+                    min_width = width
+                if height > max_height:
+                    max_height = height
+                elif height < min_height:
+                    min_height = height
+
+        # get line and zone max
+        max_line_id = int(line.id)
+    max_zone_id = int(zone.id)
+
+    if FLAGS.debug:
+        print("Min/Max x: ", min_x, max_x)
+        print("Min/Max y: ", min_y, max_y)
+        print("Min/Max width: ", min_width, max_width)
+        print("Min/Max height: ", min_height, max_height)
+        print("Min/Max line: ", 0, max_line_id)
+        print("Min/Max zone: ", 0, max_zone_id)
 
     # get all the words on the page, as well as their containing line and zone ids
     word_tups = []
@@ -370,7 +406,8 @@ def make_example(writer, page, update_vocab, update_chars,
                 else:
                     # process the finished sequence
                     oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
-                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y, min_x, min_y)
+                     label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y, min_x, min_y,
+                                                  min_height, max_height, min_width, max_width, max_line_id, max_zone_id)
                     # start the next sequence
                     word_tups = [(word, page.id, zone.id, line.id)]
                 total_words += 1
@@ -379,7 +416,8 @@ def make_example(writer, page, update_vocab, update_chars,
     oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map,
                                   label_map,
                                   label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x,
-                                  max_y, min_x, min_y)
+                                  max_y, min_x, min_y,
+                                  min_height, max_height, min_width, max_width, max_line_id, max_zone_id)
     total_words += 1
 
     if FLAGS.debug:
@@ -488,8 +526,8 @@ def grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str
                 # print(char, id)
                 # print(type(char))
                 if char not in char_map:
-                    char_map[char] = id
-                    char_int_str_map[id] = char
+                    char_map[char] = int(id)
+                    char_int_str_map[int(id)] = char
 
     # load shape mappings if applicable
     if FLAGS.load_shapes != '':
@@ -499,8 +537,8 @@ def grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str
                 shape = line.strip().split("\t")[0]
                 id = line.strip().split("\t")[1]
                 if shape not in shape_map:
-                    shape_map[shape] = id
-                    shape_int_str_map[id] = shape
+                    shape_map[shape] = int(id)
+                    shape_int_str_map[int(id)] = shape
 
     # load label mappings if applicable
     if FLAGS.load_labels != '':
@@ -510,9 +548,11 @@ def grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str
                 label = line.strip().split("\t")[0]
                 id = line.strip().split("\t")[1]
                 if label not in label_map:
-                    # print("adding word %s" % word)
-                    label_map[label] = id
-                    label_int_str_map[id] = label
+                    print("adding label %s with id %s" % (label, id))
+                    label_map[label] = int(id)
+                    label_int_str_map[int(id)] = label
+    for label in label_map:
+        print(label, label_map[label])
 
      # add out of vocab string to the token, character maps
     if OOV_STR not in token_map:
