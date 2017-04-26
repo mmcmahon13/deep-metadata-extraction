@@ -193,6 +193,24 @@ def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width
             except Exception as e:
                 # print("Error loading train batches")
                 done = True
+    else:
+        done = False
+        while not done:
+            try:
+                # determine the number of train examples but don't actually load them
+                train_batch = sess.run(train_eval_batcher.next_batch_op)
+                train_label_batch, train_token_batch, train_shape_batch, train_char_batch, train_seq_len_batch, train_tok_len_batch, \
+                train_width_batch, train_height_batch, train_wh_ratio_batch, train_x_coord_batch, train_y_coord_batch, \
+                train_page_id_batch, train_line_id_batch, train_zone_id_batch, \
+                train_place_scores_batch, train_department_scores_batch, train_university_scores_batch, train_person_scores_batch = train_batch
+                mask_batch = np.zeros(train_token_batch.shape)
+                print("batch length: %d" % len(train_seq_len_batch))
+                sys.stdout.flush()
+                num_train_examples += len(train_seq_len_batch)
+            except Exception as e:
+                # print("Error loading train batches")
+                done = True
+
     if FLAGS.memmap_train:
         train_batcher.load_and_bucket_data(sess)
     print("%d train batches loaded." % len(train_batches))

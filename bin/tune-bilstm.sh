@@ -34,9 +34,9 @@ word_dropouts="0.5" # 0.85 0.65"
 batch_sizes="64 32"
 l2s="0.0 1e-6 1e-8"
 nonlinearities="tanh" #relu sigmoid tanh"
-num_filters="100 150" #50 100 150"
+num_filters="150" #50 100 150"
 shape_dims="5"
-clip_grads="1 5 10"
+clip_grads="1" # 5 10" # not actually used
 beta2s="0.9 0.99 0.999"
 epsilons="1e-4 1e-6 1e-8"
 reg_drop_penalties="1e-4 1e-5"
@@ -81,7 +81,7 @@ for lr in ${lrs[@]}; do
                                                         --model $model \
                                                         --train_dir $train_dir \
                                                         --dev_dir $dev_dir \
-                                                        --max_seq_len $max_sent_len \
+                                                        --max_seq_len $max_seq_len \
                                                         --embed_dim $embedding_dim \
                                                         --embeddings $embeddings \
                                                         --nonlinearity $nonlinearity \
