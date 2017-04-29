@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 import sys
 import time
+
 import tensorflow as tf
 import numpy as np
 from sklearn.metrics import f1_score
@@ -15,6 +16,9 @@ import tf_utils
 FLAGS = tf.app.flags.FLAGS
 
 # run the model on dev/test data and make predictions
+# TODO alter this to return confusion matrix or save predictions of best model?
+# also alter the preprocessing to save the document id so we can compare gold labels to predicted labels for a given doc
+# encode in sequence an id that marks where it occurs on the page
 def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_id_map, labels_id_str_map, extra_text=""):
     print(extra_text)
     sys.stdout.flush()
@@ -136,7 +140,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
     # print(labels_str_id_map.keys())
     # sys.stdout.flush()
 
-    tag_set = [l.split('-')[-1] for l in labels_str_id_map.keys()]
+    tag_set = set([l.split('-')[-1] for l in labels_str_id_map.keys()])
 
     tag_level_metrics = compute_f1_score(flat_labels, flat_preds, tag_set)
     accuracy = sum(flat_preds == flat_labels) * 1. / len(flat_labels)
@@ -167,7 +171,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         # #                          extra_text="Boundary evaluation %s: " % extra_text)
         # # print("done with batch evaluation")
         # return f1_micro, precision
-    return w_f1, accuracy
+    return w_f1, accuracy, flat_preds, flat_labels
 
 def compute_f1_score(ytrue, ypred, tag_set):
     # this is direct from the Meta example script Shankar sent

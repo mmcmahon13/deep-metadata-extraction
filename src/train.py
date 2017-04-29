@@ -13,6 +13,7 @@ from train_utils import *
 import evaluate as evaluation
 import json
 import tf_utils
+import os
 
 # FLAGS
 # data directories
@@ -229,11 +230,22 @@ def run_train():
             # just run the evaluation
             if FLAGS.evaluate_only:
                 if FLAGS.train_eval:
-                    evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
+                    w_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
                                               labels_id_str_map, "TRAIN")
                 print()
-                evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
+                w_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
                                           labels_id_str_map, "TEST")
+
+                print("writing predictions to disk:")
+                # with open(FLAGS.model_dir + os.sep + 'test_preds.txt', 'w') as f:
+                #     for pred in preds:
+                #         f.write(pred + "\n")
+                # with open(FLAGS.model_dir + os.sep + 'test_golds.txt', 'w') as f:
+                #     for label in labels:
+                #         f.write(label + "\n")
+                np.save("test_preds.npy", preds)
+                np.save("test_labels.npy", labels)
+
             # train a model
             else:
                 best_score = 0
@@ -304,7 +316,7 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
                 evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
                                           labels_id_str_map, "TRAIN (iteration %d)" % training_iteration)
                 print()
-            weighted_f1, accuracy = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
+            weighted_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
                                       labels_id_str_map, "TEST (iteration %d)" % training_iteration)
             print()
             # f1_micro, precision = evaluation.run_evaluation(dev_batches, update_context,
