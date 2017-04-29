@@ -24,7 +24,7 @@ if [[ "$2" == "test" ]]; then
     additional_args=${@:3}
 fi
 
-cmd="$CNN_SPRED_ROOT/bin/train-lstm.sh \
+cmd="$DEEP_META_ROOT/bin/train-bilstm.sh \
 $conf \
 --evaluate_only \
 --train_eval \

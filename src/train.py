@@ -229,9 +229,11 @@ def run_train():
             # just run the evaluation
             if FLAGS.evaluate_only:
                 if FLAGS.train_eval:
-                    evaluation.run_evaluation(train_batches, FLAGS.layers2 != '', "(train)")
+                    evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
+                                              labels_id_str_map, "TRAIN")
                 print()
-                evaluation.run_evaluation(dev_batches, FLAGS.layers2 != '', "(test)")
+                evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
+                                          labels_id_str_map, "TEST")
             # train a model
             else:
                 best_score = 0
