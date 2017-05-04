@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 import itertools
 
 def make_confusion_matrix(y_true, y_pred, labels_str_id_map, labels_id_str_map):
-    cm = confusion_matrix(y_true, y_pred)
-    plot_confusion_matrix(cm, labels_id_str_map.keys(), labels_id_str_map)
+    print(type(y_true[0]))
+    print(np.array(labels_str_id_map.keys()))
+    cm = confusion_matrix(y_true, y_pred, np.array(labels_str_id_map.keys()))
+    plot_confusion_matrix(cm, labels_str_id_map.keys(), labels_id_str_map, normalize=True)
 
 def plot_confusion_matrix(cm, classes, labels_id_str_map,
-                          normalize=True,
+                          normalize=False,
                           title='Confusion matrix',
                           cmap=plt.cm.Blues):
     """
@@ -19,8 +21,9 @@ def plot_confusion_matrix(cm, classes, labels_id_str_map,
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, [labels_id_str_map[c] for c in classes], rotation=90)
-    plt.yticks(tick_marks, [labels_id_str_map[c] for c in classes])
+    #[labels_id_str_map[c] for c in classes]
+    plt.xticks(tick_marks, classes, rotation=90)
+    plt.yticks(tick_marks, classes)
 
     if normalize:
         cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], 2)
