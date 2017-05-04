@@ -190,11 +190,6 @@ def match_dictionaries(doc, place_set, department_set, university_set, person_se
     # check all unigrams
     for word in words:
         tok = word.text.lower().strip()
-        # place_score = fuzz.token_set_ratio(tok, places) / 100
-        # dept_score = fuzz.token_set_ratio(tok, depts) / 100
-        # uni_score = fuzz.token_set_ratio(tok, unis) / 100
-        # person_score = fuzz.token_set_ratio(tok, people) / 100
-        # print("%s: place: %f department: %f university: %f person: %f" % (tok, place_score, dept_score, uni_score, person_score))
         if matching == 'exact':
             if tok in place_set:
                 word.place_score = 1
@@ -236,7 +231,7 @@ def match_dictionaries(doc, place_set, department_set, university_set, person_se
             #     print(tok, "person")
 
 
-# TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does
+# TODO: try both binary matching and the weird prefix-suffix BILOU thing that the paper does?
 def load_dictionaries():
     # place dictionaries
     place_set = set([])

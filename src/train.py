@@ -91,13 +91,14 @@ tf.app.flags.DEFINE_float('regularize_drop_penalty', 0.0, 'penalty for dropout r
 
 FLAGS = tf.app.flags.FLAGS
 
+# This method creates the TensorFlow graph and session, running the training loop
 def run_train():
     # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
     shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.train_dir)
-    # used to load from FLAGS.train_dir,
 
     # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
+    # TODO right now these aren't used
     type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
 
     # load the embeddings
@@ -108,15 +109,16 @@ def run_train():
     vocab_size = len(vocab_str_id_map)
     shape_domain_size = len(shape_id_str_map)
 
+    # create TF graph
     with tf.Graph().as_default():
+        # create batchers
         train_batcher = Batcher(FLAGS.train_dir, FLAGS.batch_size) if FLAGS.memmap_train else SeqBatcher(FLAGS.train_dir,
                                                                                                    FLAGS.batch_size)
         dev_batcher = SeqBatcher(FLAGS.dev_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
         train_eval_batcher = SeqBatcher(FLAGS.train_dir, FLAGS.batch_size, num_buckets=0, num_epochs=1)
 
-        # create character embedding model and train char embeddings:
-        # todo add in dropout?
+        # create character embedding model
         if FLAGS.char_dim > 0 and FLAGS.char_model == "lstm":
             print("creating and training character embeddings")
             char_embedding_model = BiLSTMChar(char_domain_size, FLAGS.char_dim, int(FLAGS.char_tok_dim / 2))
@@ -202,6 +204,7 @@ def run_train():
 
         frontend_saver = tf.train.Saver(var_list=model_vars)
 
+        # create a supervisor
         sv = tf.python.train.Supervisor(logdir=FLAGS.model_dir if FLAGS.model_dir != '' else None,
                                         global_step=global_step,
                                         saver=None,
@@ -219,6 +222,7 @@ def run_train():
             # start queue runner threads
             threads = tf.train.start_queue_runners(sess=sess)
 
+            # load model if applicable
             if FLAGS.load_dir != '':
                 print("Deserializing model: " + FLAGS.load_dir + ".tf")
                 frontend_loader.restore(sess, FLAGS.load_dir + ".tf")
@@ -228,7 +232,7 @@ def run_train():
             dev_batches, train_batches, num_dev_examples, num_train_examples \
                 = load_batches(sess, train_batcher, train_eval_batcher, dev_batcher)
 
-            # just run the evaluation
+            # just run the evaluation if applicable
             if FLAGS.evaluate_only:
                 if FLAGS.train_eval:
                     w_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, train_batches, labels_str_id_map,
@@ -237,6 +241,7 @@ def run_train():
                 w_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
                                           labels_id_str_map, "TEST", True, vocab_str_id_map, vocab_id_str_map)
 
+                # write test set predictions to disk (for furthr analysis)
                 print("writing predictions to disk:")
                 # with open(FLAGS.model_dir + os.sep + 'test_preds.txt', 'w') as f:
                 #     for pred in preds:
@@ -244,8 +249,8 @@ def run_train():
                 # with open(FLAGS.model_dir + os.sep + 'test_golds.txt', 'w') as f:
                 #     for label in labels:
                 #         f.write(label + "\n")
-                np.save("test_preds.npy", preds)
-                np.save("test_labels.npy", labels)
+                np.save(FLAGS.model_dir + os.sep + "test_preds.npy", preds)
+                np.save(FLAGS.model_dir + os.sep + "test_labels.npy", labels)
 
             # train a model
             else:
@@ -277,17 +282,20 @@ def run_train():
         print("Avg training speed: %f examples/second" % (train_speed))
         print("Best dev F1: %2.2f" % (best_score * 100))
 
+# this fuction actually runs the training loop for the desired number of epochs
 def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num_train_examples, num_dev_examples,
           train_batcher, labels_str_id_map, labels_id_str_map, train_op, frontend_saver, vocab_str_id_map):
 
+    # print out logging information after every fifth of the training set
     log_every = int(max(100, num_train_examples / 5))
 
     # start the training loop
-    print("Training on %d pages (%d examples)" % (num_train_examples, num_train_examples))
+    print("Training on %d examples)" % (num_train_examples))
     sys.stdout.flush()
     start_time = time.time()
     train_batcher._step = 1.0
     converged = False
+
     # keep track of how many training examples we've seen
     examples = 0
     log_every_running = log_every
@@ -300,9 +308,9 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
     max_lower = 6
     min_iters = 20
     best_score = 0
-    # todo we might want this to be false for finetuning or something?
-    update_context = True
     update_frontend = True
+
+    # start training loop, run until max epochs is exceeded or until loss has "converged"
     while not sv.should_stop() and training_iteration < FLAGS.max_epochs and not (FLAGS.until_convergence and converged):
         # if we've gone through the entire dataset, update the epoch count (epoch = iteration here)
         if examples >= num_train_examples:
@@ -324,7 +332,7 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
             #                                      "TEST (iteration %d)" % training_iteration)
             print("Avg training speed: %f examples/second" % (speed_num / speed_denom))
 
-            # todo keep track of running best / convergence heuristic once i implement the eval
+            # keep track of best weighted F1 score on the dev set, save the model associated with it
             if weighted_f1 > best_score:
                 best_score = weighted_f1
                 num_lower = 0
@@ -334,23 +342,10 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
                         print("Serialized model: %s" % save_path)
             else:
                 num_lower += 1
+
             # if we've done the minimum number of iterations, check to see if the best score has converged
             if num_lower > max_lower and training_iteration > min_iters:
                 converged = True
-            #
-            # # see if we have a better precision and save the model if so
-            # if precision > best_precision:
-            #     best_precision = precision
-            #     if FLAGS.model_dir != '':
-            #         if update_frontend and not update_context:
-            #             save_path = frontend_saver.save(sess, FLAGS.model_dir + "-frontend-prec.tf")
-            #             print("Serialized model: %s" % save_path)
-            #         elif update_context and not update_frontend:
-            #             save_path = context_saver.save(sess, FLAGS.model_dir + "-context-prec.tf")
-            #             print("Serialized model: %s" % save_path)
-            #         else:
-            #             save_path = saver.save(sess, FLAGS.model_dir + "-prec.tf")
-            #             print("Serialized model: %s" % save_path)
 
             # update per-epoch variables
             log_every_running = log_every
@@ -358,6 +353,7 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
             epoch_loss = 0.0
             start_time = time.time()
 
+        # print out logging information
         if examples > log_every_running:
             speed_denom += time.time() - start_time
             speed_num += examples
@@ -378,8 +374,6 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
         word_probs = np.random.random(token_batch.shape)
         drop_indices = np.where((word_probs > FLAGS.word_dropout))
         token_batch[drop_indices[0], drop_indices[1]] = vocab_str_id_map["<OOV>"]
-
-        # TODO apply dropout to the rest of the features as well - are 0 features going to be an issue?
 
         # check that shapes look correct
         # print("label_batch_shape: ", label_batch.shape)
@@ -410,16 +404,11 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
         page_ids_batch = np.expand_dims(page_ids_batch, axis=2)
         line_ids_batch = np.expand_dims(line_ids_batch, axis=2)
         zone_ids_batch = np.expand_dims(zone_ids_batch, axis=2)
-        # place_scores_batch = np.expand_dims(place_scores_batch, axis=2)
-        # department_scores_batch = np.expand_dims(department_scores_batch, axis=2)
-        # university_scores_batch = np.expand_dims(university_scores_batch, axis=2)
-        # person_scores_batch = np.expand_dims(person_scores_batch, axis=2)
 
         # make mask out of seq lens
         batch_size, batch_seq_len = token_batch.shape
 
         # print(batch_seq_len)
-
 
         # pad the character batch?
         char_lens = np.sum(tok_lengths_batch, axis=1)
@@ -429,8 +418,6 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
             char_indices = [item for sublist in [range(i * max_char_len, i * max_char_len + d) for i, d in
                                                  enumerate(tok_lengths_batch[b])] for item in sublist]
             padded_char_batch[b, char_indices] = char_batch[b][:char_lens[b]]
-
-        num_sentences_batch = np.sum(seq_len_batch != 0, axis=1)
 
         # print(seq_len_batch)
         # print(num_sentences_batch)
@@ -445,6 +432,7 @@ def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num
                 start += seq_len #+ (2 if FLAGS.start_end else 1) * pad_width
         examples += batch_size
 
+        # MODEL FEEDS
         char_embedding_feeds = {} if FLAGS.char_dim == 0 else {
             char_embedding_model.input_chars: padded_char_batch,
             char_embedding_model.batch_size: batch_size,

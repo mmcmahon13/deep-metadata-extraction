@@ -1,12 +1,18 @@
 # Classes to represent the document structure, as parsed out of the TrueViz XML format
 
 class DocumentObject:
+    """
+    Represents an document entity (Document, Line, Zone, etc.)
+    """
 
     def __init__(self):
         self.id = ''
 
 
 class BoundedDocumentObject(DocumentObject):
+    """
+       Represents an document entity (Document, Line, Zone, etc.) with a bounding box and a label
+    """
 
     def __init__(self):
         self.label = ""
@@ -136,7 +142,6 @@ class Line(DocumentObject, BoundedDocumentObject):
         self.words.append(word)
         self.text += word.text + " "
 
-# TODO: add pointers to containing objects so we can use them for feature engineering as well
 class Word(DocumentObject, BoundedDocumentObject):
     """
         Representation of a word
