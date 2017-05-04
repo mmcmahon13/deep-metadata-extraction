@@ -132,7 +132,8 @@ def serialize_example(writer, intmapped_labels, tokens, shapes, chars, page_lens
 # Given a list of word tuples, generate feature vectors for the sequence adn update the intmaps
 def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
                      label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y,
-                     min_x, min_y, min_height, max_height, min_width, max_width, max_line_id, max_zone_id):
+                     min_x, min_y, min_height, max_height, min_width, max_width, min_wh_ratio, max_wh_ratio,
+                     max_line_id, max_zone_id):
     oov_count = 0
     # ignore padding for now and just let the batcher handle variable length sequences?
     max_len_with_pad = len(word_tups)
@@ -152,6 +153,7 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
     intmapped_labels = np.zeros(max_len_with_pad, dtype=np.int64)
 
     # geometrical information (percentages, in range 0-1)
+
     widths = np.zeros(max_len_with_pad, dtype=np.float64)
     heights = np.zeros(max_len_with_pad, dtype=np.float64)
     wh_ratios = np.zeros(max_len_with_pad, dtype=np.float64)
@@ -249,7 +251,7 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         widths[i] = (width - min_width) / (max_width - min_width)
         heights[i] = (height - min_height) / (max_height - min_height)
         # todo should we also bin widths, heights, wh ratios, etc.?
-        wh_ratios[i] = wh_ratio
+        wh_ratios[i] = (wh_ratio - min_wh_ratio) / (max_wh_ratio - min_wh_ratio)
         # add one to all these, so that the class ids start at 1 and not 0 (to avoid issues during masking)
         pages[i] = int(page_id)
         lines[i] = int(line_id) / max_line_id
@@ -352,6 +354,8 @@ def make_example(writer, page, update_vocab, update_chars,
     min_y = 100000
     max_width = 0
     min_width = 1000000
+    max_wh_ratio = 0
+    min_wh_ratio = 1000000
     max_height = 0
     min_height = 100000
     max_line_id = 0
@@ -382,6 +386,15 @@ def make_example(writer, page, update_vocab, update_chars,
                 elif height < min_height:
                     min_height = height
 
+                if height != 0:
+                    wh_ratio = width/height
+                else:
+                    wh_ratio = 0
+                if wh_ratio > max_wh_ratio:
+                    max_wh_ratio = wh_ratio
+                elif wh_ratio < min_wh_ratio:
+                    min_wh_ratio = wh_ratio
+
         # get line and zone max
         max_line_id = int(line.id)
     max_zone_id = int(zone.id)
@@ -393,6 +406,7 @@ def make_example(writer, page, update_vocab, update_chars,
         print("Min/Max height: ", min_height, max_height)
         print("Min/Max line: ", 0, max_line_id)
         print("Min/Max zone: ", 0, max_zone_id)
+        print("Min/Max wh_ratio: ", min_wh_ratio, max_wh_ratio)
 
     # get all the words on the page, as well as their containing line and zone ids
     word_tups = []
@@ -407,7 +421,8 @@ def make_example(writer, page, update_vocab, update_chars,
                     # process the finished sequence
                     oov_count += process_sequence(writer, word_tups, update_vocab, update_chars, token_map, token_int_str_map, label_map,
                      label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x, max_y, min_x, min_y,
-                                                  min_height, max_height, min_width, max_width, max_line_id, max_zone_id)
+                                                  min_height, max_height, min_width, max_width, min_wh_ratio, max_wh_ratio,
+                                                  max_line_id, max_zone_id)
                     # start the next sequence
                     word_tups = [(word, page.id, zone.id, line.id)]
                 total_words += 1
@@ -417,7 +432,7 @@ def make_example(writer, page, update_vocab, update_chars,
                                   label_map,
                                   label_int_str_map, char_map, char_int_str_map, shape_map, shape_int_str_map, max_x,
                                   max_y, min_x, min_y,
-                                  min_height, max_height, min_width, max_width, max_line_id, max_zone_id)
+                                  min_height, max_height, min_width, max_width, min_wh_ratio, max_wh_ratio, max_line_id, max_zone_id)
     total_words += 1
 
     if FLAGS.debug:
@@ -439,6 +454,7 @@ def doc_to_examples(in_file, writer, label_map, token_map, shape_map, char_map, 
     try:
         print('Converting %s ' % in_file)
         doc = parse_doc(in_file)
+        doc.id = in_file
 
         # convert labels to BILOU
         if FLAGS.bilou:

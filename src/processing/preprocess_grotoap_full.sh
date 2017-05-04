@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #!/bin/bash
 
 export DATA_DIR="/iesl/canvas/mmcmahon/data/"
@@ -7,33 +9,31 @@ export DATA_DIR="/iesl/canvas/mmcmahon/data/"
 
 additional_args=${@:1}
 
-export DATA_DIR="/iesl/canvas/mmcmahon/data/"
-
 # process the train set
 cmd="python grotoap_to_tfrecords.py \
 --grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/train \
---out_dir $DATA_DIR/pruned_pmc/train-30-lex/ \
+--out_dir $DATA_DIR/pruned_pmc/train-full/ \
 --load_vocab $DATA_DIR/pruned_PMC_min_10.txt \
 --bilou \
 --use_lexicons \
 $additional_args
 "
-echo "processing train set:"
+echo "processing larger train set"
 echo ${cmd}
 eval ${cmd}
 
 # process the dev set using the maps created in the train processing
 cmd="python grotoap_to_tfrecords.py \
---grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/dev \
---out_dir $DATA_DIR/pruned_pmc/dev-30-lex/ \
+--grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/test/ \
+--out_dir $DATA_DIR/pruned_pmc/test-full/ \
 --load_vocab $DATA_DIR/pruned_PMC_min_10.txt \
---load_shapes $DATA_DIR/pruned_pmc/train-30-lex/shape.txt \
---load_chars $DATA_DIR/pruned_pmc/train-30-lex/char.txt \
---load_labels $DATA_DIR/pruned_pmc/train-30-lex/label.txt \
+--load_shapes $DATA_DIR/pruned_pmc/train-full/shape.txt \
+--load_chars $DATA_DIR/pruned_pmc/train-full/char.txt \
+--load_labels $DATA_DIR/pruned_pmc/train-full/label.txt \
 --bilou \
 --use_lexicons \
 $additional_args
 "
-echo "processing dev set:"
+echo "processing test set:"
 echo ${cmd}
 eval ${cmd}

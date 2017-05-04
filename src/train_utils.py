@@ -42,7 +42,7 @@ def create_type_maps(labels_str_id_map):
     return type_int_int_map, bilou_int_int_map, type_set, bilou_set
 
 # load the maps created during preprocessing
-def load_intmaps(dir):
+def load_intmaps(train_dir):
     print("Loading vocabulary maps...")
     sys.stdout.flush()
     with open(dir + '/label.txt', 'r') as f:

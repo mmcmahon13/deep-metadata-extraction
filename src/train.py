@@ -95,6 +95,7 @@ def run_train():
     # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
     shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.train_dir)
+    # used to load from FLAGS.train_dir,
 
     # create intmaps for label types and bio (used later for evaluation, calculating F1 scores, etc.)
     type_int_int_map, bilou_int_int_map, type_set, bilou_set = create_type_maps(labels_str_id_map)
@@ -234,7 +235,7 @@ def run_train():
                                               labels_id_str_map, "TRAIN")
                 print()
                 w_f1, accuracy, preds, labels = evaluation.run_evaluation(sess, model, char_embedding_model, dev_batches, labels_str_id_map,
-                                          labels_id_str_map, "TEST")
+                                          labels_id_str_map, "TEST", True, vocab_str_id_map, vocab_id_str_map)
 
                 print("writing predictions to disk:")
                 # with open(FLAGS.model_dir + os.sep + 'test_preds.txt', 'w') as f:

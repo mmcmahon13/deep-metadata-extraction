@@ -46,6 +46,7 @@ class Document(DocumentObject):
     def __init__(self):
         self.pages = []
         self.text = ""
+        self.id = ""
 
     def addPage(self, page):
         self.pages.append(page)

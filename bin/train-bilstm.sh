@@ -24,6 +24,9 @@ if [[ "$pretrained_model" != "" ]]; then
     load_pretrained_param="--load_dir $pretrained_model"
 fi
 
+# todo put this back, just evaluating on the test set to see
+# --dev_dir $dev_dir \
+
 cmd="python src/train.py \
 --model $model \
 --train_dir $train_dir \
@@ -51,7 +54,6 @@ cmd="python src/train.py \
 --regularize_drop_penalty $drop_penalty \
 --use_geometric_feats \
 --use_lexicons \
---train_eval \
 $predict_pad_param \
 $viterbi_param \
 $load_pretrained_param \

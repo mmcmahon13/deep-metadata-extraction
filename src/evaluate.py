@@ -19,11 +19,14 @@ FLAGS = tf.app.flags.FLAGS
 # TODO alter this to return confusion matrix or save predictions of best model?
 # also alter the preprocessing to save the document id so we can compare gold labels to predicted labels for a given doc
 # encode in sequence an id that marks where it occurs on the page
-def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_id_map, labels_id_str_map, extra_text=""):
+def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_id_map, labels_id_str_map,
+                   extra_text="", show_preds = False, vocab_str_id_map= {}, vocab_id_str_map = {}):
     print(extra_text)
     sys.stdout.flush()
     predictions = []
     labels = []
+    words = []
+    docs = []
     for b, batch in enumerate(eval_batches):
         # print("Batch: ", batch)
         # sys.stdout.flush()
@@ -123,15 +126,18 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         predictions.append(preds)
         # print(preds.shape)
         labels.append(eval_label_batch)
+        words.append(eval_token_batch)
         # print(eval_label_batch.shape)
         # sys.stdout.flush()
 
     # print("starting batch evaluation")
     flat_preds = np.concatenate([p.flatten() for p in predictions])
     flat_labels = np.concatenate([l.flatten() for l in labels])
+    # flat_words = np.concatenate([l.flatten() for l in words])
 
     flat_preds = np.array([labels_id_str_map[p] for p in flat_preds])
-    flat_labels = np.array([labels_id_str_map[l] for l in flat_labels])
+    flat_labels = np.array([labels_id_str_map.get(l, 'O') for l in flat_labels])
+    # flat_words = np.array([vocab_id_str_map[l] for l in flat_words])
     # print(len(flat_preds))
     # print(len(flat_labels))
     # print(flat_preds[0])
@@ -159,19 +165,17 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
         print('Precision, Recall, F1 for ' + str(tag) + ': ' + str(tag_level_metrics[tag][0]) + ', ' + str(
             tag_level_metrics[tag][1]) + ', ' + str(tag_level_metrics[tag][2]))
     sys.stdout.flush()
-        # f1_micro, precision = evaluation.segment_eval(eval_batches, predictions, type_set, type_int_int_map,
-        #                                    labels_id_str_map, vocab_id_str_map,
-        #                                    outside_idx=map(lambda t: type_set[t] if t in type_set else type_set["O"], outside_set),
-        #                                    pad_width=pad_width, start_end=FLAGS.start_end,
-        #                                    extra_text="Segment evaluation %s:" % extra_text)
-        # # evaluation.token_eval(dev_batches, predictions, type_set, type_int_int_map, outside_idx=type_set["O"],
-        # #                       pad_width=pad_width, extra_text="Token evaluation %s:" % extra_text)
-        # # evaluation.boundary_eval(eval_batches, predictions, bilou_set, bilou_int_int_map,
-        # #                          outside_idx=bilou_set["O"], pad_width=pad_width,
-        # #                          extra_text="Boundary evaluation %s: " % extra_text)
-        # # print("done with batch evaluation")
-        # return f1_micro, precision
+
+    # if show_preds:
+    #     for i in range(len(flat_labels)):
+    #         if flat_preds[i] != 'O':
+    #             print(flat_words[i], flat_preds[i])
+
+
     return w_f1, accuracy, flat_preds, flat_labels
+
+def extract_metadata():
+    pass
 
 def compute_f1_score(ytrue, ypred, tag_set):
     # this is direct from the Meta example script Shankar sent
