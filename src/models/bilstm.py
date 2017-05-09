@@ -153,7 +153,6 @@ class BiLSTM(object):
                 input_list.append(shape_embeddings)
                 input_size += self.shape_size
 
-            # todo change this to embeddings (see above)
             if self.use_geometric_feats:
                 # it's giving some issue with the typing, so I'm just casting everythint ot be the same
                 input_list.append(tf.cast(self.widths, tf.float32))
