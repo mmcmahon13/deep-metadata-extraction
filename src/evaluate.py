@@ -15,12 +15,29 @@ import tf_utils
 
 FLAGS = tf.app.flags.FLAGS
 
+# TODO
 # run the model on dev/test data and make predictions
-# TODO alter this to return confusion matrix or save predictions of best model?
 # also alter the preprocessing to save the document id so we can compare gold labels to predicted labels for a given doc
-# encode in sequence an id that marks where it occurs on the page
+# encode in sequence an id that marks where it occurs on the page?
+
 def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_id_map, labels_id_str_map,
                    extra_text="", show_preds = False, vocab_str_id_map= {}, vocab_id_str_map = {}):
+    '''
+    Run the model on the provided batchs, make predicitons, calculate performance metrics
+    
+    :param sess: 
+    :param model: 
+    :param char_embedding_model: 
+    :param eval_batches: 
+    :param labels_str_id_map: 
+    :param labels_id_str_map: 
+    :param extra_text: 
+    :param show_preds: 
+    :param vocab_str_id_map: 
+    :param vocab_id_str_map: 
+    :return: 
+    '''
+
     print(extra_text)
     sys.stdout.flush()
     predictions = []
@@ -151,7 +168,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
     tag_level_metrics = compute_f1_score(flat_labels, flat_preds, tag_set)
     accuracy = sum(flat_preds == flat_labels) * 1. / len(flat_labels)
 
-    # TODO also print out micro/macro?
+    # overall scores
     w_f1 = f1_score(flat_labels, flat_preds, average='weighted')
     micro_f1 = f1_score(flat_labels, flat_preds, average='micro')
     macro_f1 = f1_score(flat_labels, flat_preds, average='macro')
@@ -161,6 +178,7 @@ def run_evaluation(sess, model, char_embedding_model, eval_batches, labels_str_i
     print('Accuracy: %f' % accuracy)
     print()
 
+    # tag scores
     for tag in tag_level_metrics:
         print('Precision, Recall, F1 for ' + str(tag) + ': ' + str(tag_level_metrics[tag][0]) + ', ' + str(
             tag_level_metrics[tag][1]) + ', ' + str(tag_level_metrics[tag][2]))

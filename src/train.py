@@ -91,8 +91,13 @@ tf.app.flags.DEFINE_float('regularize_drop_penalty', 0.0, 'penalty for dropout r
 
 FLAGS = tf.app.flags.FLAGS
 
-# This method creates the TensorFlow graph and session, running the training loop
 def run_train():
+    '''
+    This method creates the TensorFlow graph and session, running the training loop
+    :return: 
+    
+    '''
+
     # load preprocessed token, label, shape, char maps
     labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, \
     shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map = load_intmaps(FLAGS.train_dir)
@@ -282,9 +287,28 @@ def run_train():
         print("Avg training speed: %f examples/second" % (train_speed))
         print("Best dev F1: %2.2f" % (best_score * 100))
 
-# this fuction actually runs the training loop for the desired number of epochs
 def train(sess, sv, model, char_embedding_model, train_batches, dev_batches, num_train_examples, num_dev_examples,
           train_batcher, labels_str_id_map, labels_id_str_map, train_op, frontend_saver, vocab_str_id_map):
+    '''
+    this fuction actually runs the training loop for the desired number of epochs
+
+    
+    :param sess: 
+    :param sv: 
+    :param model: 
+    :param char_embedding_model: 
+    :param train_batches: 
+    :param dev_batches: 
+    :param num_train_examples: 
+    :param num_dev_examples: 
+    :param train_batcher: 
+    :param labels_str_id_map: 
+    :param labels_id_str_map: 
+    :param train_op: 
+    :param frontend_saver: 
+    :param vocab_str_id_map: 
+    :return: 
+    '''
 
     # print out logging information after every fifth of the training set
     log_every = int(max(100, num_train_examples / 5))

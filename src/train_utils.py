@@ -12,6 +12,12 @@ def sample_pad_size():
     return np.random.randint(1, FLAGS.max_additional_pad) if FLAGS.max_additional_pad > 0 else 0
 
 def create_type_maps(labels_str_id_map):
+    '''
+    Create int-string maps for the labels 
+    
+    :param labels_str_id_map: 
+    :return: 
+    '''
     type_int_int_map = {}
     bilou_int_int_map = {}
     bilou_set = {}
@@ -41,8 +47,13 @@ def create_type_maps(labels_str_id_map):
 
     return type_int_int_map, bilou_int_int_map, type_set, bilou_set
 
-# load the maps created during preprocessing
 def load_intmaps(train_dir):
+    '''
+    load the intmaps created during preprocessing
+
+    :param train_dir: directory where the training data/maps are
+    :return: the intmaps
+    '''
     print("Loading vocabulary maps...")
     sys.stdout.flush()
     with open(dir + '/label.txt', 'r') as f:
@@ -65,8 +76,13 @@ def load_intmaps(train_dir):
     sys.stdout.flush()
     return labels_str_id_map, labels_id_str_map, vocab_str_id_map, vocab_id_str_map, shape_str_id_map, shape_id_str_map, char_str_id_map, char_id_str_map
 
-# load the word embeddings
 def load_embeddings(vocab_str_id_map):
+    '''
+    # load the word embeddings for words present in the vocab (else load OOV vector)
+
+    :param vocab_str_id_map: 
+    :return: 
+    '''
     print("Loading embeddings...")
     sys.stdout.flush()
     vocab_size = len(vocab_str_id_map)
@@ -98,8 +114,12 @@ def load_embeddings(vocab_str_id_map):
     sys.stdout.flush()
     return embeddings
 
-# print out the number of trainable params in the model
 def get_trainable_params():
+    '''
+    print out the number of trainable params in the model
+
+    :return: 
+    '''
     total_parameters=0
     for variable in tf.trainable_variables():
         # shape is an array of tf.Dimension
@@ -113,6 +133,16 @@ def get_trainable_params():
     sys.stdout.flush()
 
 def load_batches(sess, train_batcher, train_eval_batcher, dev_batcher, pad_width=0):
+    '''
+    load all batches into memory if applicable
+    
+    :param sess: TF session
+    :param train_batcher: batcher for train data
+    :param train_eval_batcher: batcher for train data evaluation
+    :param dev_batcher: bather for dev data
+    :param pad_width: N/A
+    :return: loaded batches along with num train and dev examples
+    '''
 
     dev_batches = []
     # load all the dev batches into memory
