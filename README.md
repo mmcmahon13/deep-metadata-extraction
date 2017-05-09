@@ -30,6 +30,8 @@ Zone labels are parsed out of the TrueViz XML and applied to all lines and words
 To parse a single doc into a Document representation, call the parse_doc(filename) function from parse_docs_sax.py, passing it the path of the file to be parsed. The function returns a Document object from which features may be extracted. This code is also used by the scripts for processing entire directories of TrueViz docs to TFRecords
 
 ### grotoap_to_tfrecords.py
+#### NOTE: The bash script `preprocess_grotoap_full.sh` and other scripts in src/processing are good examples of how to run the preprocessing; the paths in the scripts must be modified to point to the desired input and output directories, as well as the appropriate embeddings/vocab.
+
 Run the following command to parse a directory of GROTOAP2 documents into TFRecords containing training sequences.
 
 ```
@@ -66,5 +68,3 @@ To create train, dev, and test sets, run `grotoap_to_tfrecords.py` on specific t
 ```
 
 To create a directory of training TFRecords for the train set, one might run `grotoap_to_tfrecords.py`, passing grotoap/train as the `--grotoap_dir` argument and grotoap-processed/train to the `--out_dir`. This would create a new directory grotoap-processed/train containing the TFRecord files *00.proto*, *01.proto*, etc. This directory may be passed as a training directory to the training code.
-
-The bash script `preprocess_grotoap_full.sh` and other scripts in src/processing are good examples of how to run the preprocessing; the paths in the scripts must be modified to point to the desired input and output directories, as well as the appropriate embeddings/vocab.
