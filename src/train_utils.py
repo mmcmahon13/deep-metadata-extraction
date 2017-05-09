@@ -92,7 +92,7 @@ def load_embeddings(vocab_str_id_map):
                 else:
                     pass
                     # print("out of vocab: %s" % word)
-    # TODO i don't really understand how the embeddings are used in the preprocessing?
+    # TODO this percentage makes no sense, disregard it?
     print("Loaded %d/%d embeddings (%2.2f%% coverage)" % (
     embeddings_used, vocab_size, embeddings_used / vocab_size * 100))
     sys.stdout.flush()
