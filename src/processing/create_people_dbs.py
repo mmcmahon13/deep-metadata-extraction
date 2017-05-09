@@ -1,6 +1,8 @@
 import simstring
 import os
 
+# create the databases for Simstring to use for dicitonary matching during preprocessing
+
 # create name database
 db = simstring.writer('dicts' + os.sep + 'people.db')
 with open('dicts' + os.sep + 'chinese_only.txt') as f:

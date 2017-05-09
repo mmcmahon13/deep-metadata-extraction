@@ -1,5 +1,6 @@
 # Text preprocessing utilities based on the pipeline provided for the BioNLP 2011 shared task
 # https://github.com/ninjin/bionlp_st_2011_supporting
+# This is not currently used by our preprocessing pipeline
 
 # based on https://github.com/saffsd/geniatagger/blob/master/tokenize.cpp
 # this might not be accurate, so maybe skip it?

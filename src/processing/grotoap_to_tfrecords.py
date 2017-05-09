@@ -30,8 +30,8 @@ tf.app.flags.DEFINE_boolean('debug', False, 'print debugging output')
 tf.app.flags.DEFINE_boolean('bilou', False, 'encode the word labels in BILOU format')
 tf.app.flags.DEFINE_integer('seq_len', 30, 'maximum sequence length')
 tf.app.flags.DEFINE_boolean('page', False, 'whether to use the whole page as an example (override sequence length)')
-tf.app.flags.DEFINE_integer('x_bins', 4, 'number of bins to use for x coordinate features')
-tf.app.flags.DEFINE_integer('y_bins', 4, 'number of bins to use for y coordinate features')
+# tf.app.flags.DEFINE_integer('x_bins', 4, 'number of bins to use for x coordinate features')
+# tf.app.flags.DEFINE_integer('y_bins', 4, 'number of bins to use for y coordinate features')
 tf.app.flags.DEFINE_boolean('full_header_labels', False, 'whether to use the expanded set of header labels, '
                                                          'or the simple set of author, abstract, affiliation, title')
 
@@ -191,6 +191,7 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
 
         # TODO: tokenize word using GENIA tokenization scheme (used by embeddings)
         # TODO: normalize word text - convert weird unicode to ASCII
+        # TODO: I can't find any coherent explanation of how this is done, so I'm leaving it for now
         token_normalized = token
 
         # check if word in vocab or not
@@ -250,7 +251,6 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
         # update geometric features (percentages of max widht/height on the page)
         widths[i] = (width - min_width) / (max_width - min_width)
         heights[i] = (height - min_height) / (max_height - min_height)
-        # todo should we also bin widths, heights, wh ratios, etc.?
         wh_ratios[i] = (wh_ratio - min_wh_ratio) / (max_wh_ratio - min_wh_ratio)
         # add one to all these, so that the class ids start at 1 and not 0 (to avoid issues during masking)
         pages[i] = int(page_id)
@@ -272,7 +272,6 @@ def process_sequence(writer, word_tups, update_vocab, update_chars, token_map, t
     # y_bins = np.linspace(min_y, max_y, num=FLAGS.y_bins)
     # y_coords = np.digitize(y_coords, y_bins) + 1
 
-    # todo bin line/zone ids, heights/widths
 
     # move this intmapping elsewhere?
     for label in labels:
@@ -600,6 +599,7 @@ def grotoap_to_examples(label_map, token_map, shape_map, char_map, label_int_str
 
     # TODO threading doesn't save the maps correctly
     # TODO I think if we want to use multithreading we need to iterate over the data once to create the maps
+    # DO NOT USE THIS IT DOESN"T WORK
     if use_threads:
         print("Currently not working, just use one thread")
         # print('Starting file process threads using %d threads' % FLAGS.num_threads)
@@ -638,7 +638,7 @@ def main(argv):
     # test_doc_path = '/iesl/canvas/mmcmahon/data/GROTOAP2/grotoap2/dataset/00/1559601.cxml'
     # doc_to_examples(1, (test_doc_path, FLAGS.out_dir + '/examples.proto'))
 
-    # TODO since this will be multithreaded, protect these with locks?
+    # TODO since this will be multithreaded, protect these with locks? (ignore this for now)
     label_map = {}
     token_map = {}
     shape_map = {}
@@ -649,6 +649,7 @@ def main(argv):
     char_int_str_map = {}
     shape_int_str_map = {}
 
+    # todo take threading out, it doesn't work
     if FLAGS.num_threads > 1:
         use_threads = True
     else:

@@ -3,6 +3,13 @@ import tensorflow as tf
 import os
 from parse_docs_sax import *
 
+'''
+This code is meant to iterate over the documents in a provided subset of GROTOAP2 documents 
+and count the occurences of embedding words in the subset, and build a vocab of the most frequent words.
+Words that occur less than min_count times are marked as OOV, and those embeddings are not loaded at train time.
+This is meant to reduce the memory needed to load all unused/rarely used embeddings.
+'''
+
 tf.app.flags.DEFINE_string('grotoap_dir', '', 'top level directory containing grotoap dataset')
 tf.app.flags.DEFINE_string('out_dir', '', 'directory for output file')
 tf.app.flags.DEFINE_string('out_file', '', 'export final vocab to this file')
@@ -71,5 +78,5 @@ def main(argv):
 if __name__ == '__main__':
     tf.app.run()
 
-
+# TO RUN:
 # python prune_embeddings.py --embeddings /iesl/canvas/mmcmahon/embeddings/PMC-w2v.txt --grotoap_dir $DATA_DIR/grotoap_test/grotoap2/dataset --out_dir $DATA_DIR --out_file 'pruned_PMC.txt'

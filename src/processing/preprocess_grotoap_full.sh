@@ -22,7 +22,7 @@ echo "processing larger train set"
 echo ${cmd}
 eval ${cmd}
 
-# process the dev set using the maps created in the train processing
+# process the test set using the maps created in the train processing
 cmd="python grotoap_to_tfrecords.py \
 --grotoap_dir $DATA_DIR/GROTOAP2/grotoap2/dataset/test/ \
 --out_dir $DATA_DIR/pruned_pmc/test-full/ \
