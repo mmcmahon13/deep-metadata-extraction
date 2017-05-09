@@ -7,7 +7,7 @@ import numpy as np
 import tf_utils
 
 '''
-' this code is adapted from Emma Strubell's implementation of the BiLSTM model
+' this code is adapted from Emma Strubell's implementation of the BiLSTM model (untested, I never used it)
 '''
 class LSTM(object):
 

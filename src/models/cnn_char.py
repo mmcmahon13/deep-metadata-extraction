@@ -6,6 +6,7 @@ import tf_utils
 
 '''
 ' this code is adapted from Emma Strubell's implementation a CNN for character embedding
+' (untested, didnt' use)
 '''
 
 class CNNChar(object):

@@ -7,7 +7,7 @@ import sys
 
 FLAGS = tf.app.flags.FLAGS
 
-# Emma Strubell's batcher
+# Emma Strubell's batcher (this is mostly not my code, it's just altered to fit my model)
 class Batcher(object):
     def __init__(self, in_dir, batch_size, num_epochs=None):
         self._batch_size = batch_size
@@ -103,6 +103,7 @@ class Batcher(object):
         return bucket
 
 # Emma Strubell's implementation of a sequence batcher with shuffling (since it doesn't seem to exist in TF)
+# provides batches of examples in a randomized manner (shuffles the data)
 class SeqBatcher(object):
     def __init__(self, in_dir, batch_size, num_buckets=0, num_epochs=None):
         self._batch_size = batch_size
@@ -110,7 +111,6 @@ class SeqBatcher(object):
         self._epoch = 0
         self._step = 1.
         self.num_epochs = num_epochs
-        # todo change this to take multiple proto files from the same directory
         in_files = []
         for root, dirs, files in os.walk(in_dir):
             for file in files:
