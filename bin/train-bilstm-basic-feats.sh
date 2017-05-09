@@ -44,12 +44,11 @@ cmd="python src/train.py \
 --initialization $initialization \
 --char_dim 0 \
 --char_tok_dim 0 \
---shape_dim $shape_dim \
+--shape_dim 0 \
 --clip_norm $clip_grad \
 --epsilon $epsilon \
 --beta2 $beta2 \
 --regularize_drop_penalty $drop_penalty \
---train_eval \
 $predict_pad_param \
 $viterbi_param \
 $load_pretrained_param \

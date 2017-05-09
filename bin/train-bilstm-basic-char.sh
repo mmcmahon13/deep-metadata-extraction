@@ -28,7 +28,7 @@ cmd="python src/train.py \
 --model $model \
 --train_dir $train_dir \
 --dev_dir $dev_dir \
---model_dir $model_dir \
+--model_dir bilstm-char \
 --max_seq_len $max_seq_len \
 --embed_dim $embedding_dim \
 --embeddings $embeddings \
@@ -44,12 +44,11 @@ cmd="python src/train.py \
 --initialization $initialization \
 --char_dim $char_dim \
 --char_tok_dim $char_tok_dim \
---shape_dim $shape_dim \
+--shape_dim 0 \
 --clip_norm $clip_grad \
 --epsilon $epsilon \
 --beta2 $beta2 \
 --regularize_drop_penalty $drop_penalty \
---train_eval \
 $predict_pad_param \
 $viterbi_param \
 $load_pretrained_param \
