@@ -1,6 +1,9 @@
 # deep-metadata-extraction
 Models to identify and extract metadata from scientific literature; training and testing is done on the GROTOAP2 dataset. The models and training code are heavily derivative of Emma Strubell's (@strubell) cnn-spred code.
 
+## Requirements
+This code requires Python 2.7, TensorFlow 0.11, cuda75/toolkit/7.5.18, and cudnn 5.1 to run (note - there may be more requirements that aren't listed here). The preprocessing requires that [Simstring](http://www.chokkan.org/software/simstring/) be installed. 
+
 ## GROTOAP2 Preproccessing
 ### To extract the article plaintext from TrueViz XML documents, run the following:
 ```python get_plaintext_sax.py [path to directory containing XML docs] [path to target file/directory] -f```
