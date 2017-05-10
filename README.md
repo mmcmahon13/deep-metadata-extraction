@@ -16,7 +16,9 @@ export DEEP_META_ROOT=`pwd`
 ## GROTOAP2 Preproccessing
 All of the preprocessing code for the GROTOAP2 dataset lives in the src/processing directory. It contains source code and bash scripts necessary to convert directories full of TrueViz XML documents to TFRecords, which may then be used for training/testing.
 
-For more details, see the [wiki page](https://github.com/mmcmahon13/deep-metadata-extraction/wiki/GROTOAP2-Preprocessing). 
+The scripts in `src/processing` may be run to produce train, test, and dev directories of TFRecords given certain subsets of GROTOAP directories - the paths in these files must be modified appropriately to point at the correct data directories, as well as the correct embeddings vocab text file (note: I used a vocab containing only embeddings that occurred in the dataset at least 10 times - this is the file that I feed in during preprocessing). 
+
+For more details on the files related to preprocessing, as well as documentation on what certain arguments mean, see the [wiki page](https://github.com/mmcmahon13/deep-metadata-extraction/wiki/GROTOAP2-Preprocessing). 
 
 
 ## Configuration files
